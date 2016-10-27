@@ -1,19 +1,3 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
 // Network topology
 //
 //           ----Controller---
@@ -28,7 +12,6 @@
 //            |      |
 //            m2     m1  
 //
-// reference: http://blog.csdn.net/u012174021/article/details/42320033
 
 
 #include "ns3/core-module.h"
@@ -42,7 +25,8 @@
 #include "ns3/applications-module.h"
 //#include "ns3/flow-monitor-helper.h"
 #include "ns3/flow-monitor-module.h"
-#include "ns3/openflow-module.h"
+//#include "ns3/openflow-module.h"
+#include "ns3/ofswitch13-module.h"
 #include "ns3/log.h"
 // 用来构造 BridgeNetDevice 的
 #include "ns3/bridge-module.h"
@@ -407,17 +391,17 @@ main (int argc, char *argv[])
   
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
+
+  // Enabling Checksum computations
+  GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
+
   
   //LogComponentEnable ("SDNHandoverScript", LOG_LEVEL_INFO);
 
   /*----- init Helpers ----- */
-  CsmaHelper csma, csma2, csmaSwitch;
+  CsmaHelper  csma;
   csma.SetChannelAttribute ("DataRate", DataRateValue (5000000));   // 5M bandwidth
   csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));   // 2ms delay
-  csma2.SetChannelAttribute ("DataRate", DataRateValue (5000000));   // 5M bandwidth
-  csma2.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));   // 2ms delay
-  csmaSwitch.SetChannelAttribute ("DataRate", DataRateValue (5000000));   // 5M bandwidth
-  csmaSwitch.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));   // 2ms delay
   
   /* 调用YansWifiChannelHelper::Default() 已经添加了默认的传播损耗模型, 下面不要再手动添加 
   By default, we create a channel model with a propagation delay equal to a constant, 
@@ -497,12 +481,12 @@ main (int argc, char *argv[])
   NetDeviceContainer link;
   /* Create the csma links, from each AP && terminals to the switch */
 
-  /* #1 Connect traditional switch1 to traditional switch2 */
-  link = csmaSwitch.Install (NodeContainer(switchesNode.Get(0),switchesNode.Get(1)));  
+  /* #1 Connect  switch1 to  switch2 */
+  link = csma.Install (NodeContainer(switchesNode.Get(0),switchesNode.Get(1)));  
   switch1Device. Add(link.Get(0));
   switch2Device. Add(link.Get(1));
   
-  /* #2 Connect AP1, AP2 and AP3 to traditional switch1 ！！！*/  
+  /* #2 Connect AP1, AP2 and AP3 to switch1 ！！！*/  
   for (uint32_t i = 0; i < nAp; i++)
   {
     link = csma.Install (NodeContainer(apsNode.Get(i), switchesNode.Get(0)));   // Get(0) for switch1
@@ -522,10 +506,10 @@ main (int argc, char *argv[])
   }
 
 
-  /* #3 Connect host1 and host2 to traditonal switch2  */
+  /* #3 Connect host1 and host2 to  switch2  */
   for (uint32_t i = 0; i < nHost; i++)
   {
-    link = csma2.Install (NodeContainer(hostsNode.Get(i), switchesNode.Get(1)));   // Get(1) for switch2
+    link = csma.Install (NodeContainer(hostsNode.Get(i), switchesNode.Get(1)));   // Get(1) for switch2
     hostsDevice. Add(link.Get(0));
     switch2Device. Add(link.Get(1));
   }
