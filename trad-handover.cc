@@ -19,7 +19,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/applications-module.h"
 //#include "ns3/flow-monitor-helper.h"
-//#include "ns3/flow-monitor-module.h"
+#include "ns3/flow-monitor-module.h"
 #include "ns3/ofswitch13-module.h"
 #include "ns3/log.h"
 // 给传统交换机(BridgeNetDevice)
