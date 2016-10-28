@@ -445,16 +445,21 @@ main (int argc, char *argv[])
 
  
   NS_LOG_UNCOND ("------------Creating Nodes------------");
-  NodeContainer switchesNode, apsNode, hostsNode;
-  NodeContainer staWifi1Nodes, staWifi2Nodes, staWifi3Nodes;
+  NodeContainer of13SwitchesNode; // 交换机Node(两个)
+  NodeContainer apsNode, hostsNode;
+  NodeContainer staWifiNodes[nAp]; // 数组，包含nAp个NodeContainer,而每个NodeContainer里面包含各自WIFI网络中的节点
+  for (size_t i = 0; i < nAp; i++)
+  {
+    staWifiNodes[i] = NodeContainer();
+  }
 
-  switchesNode. Create (nSwitch);    //2 Nodes(switch1 and switch2)-----node 0,1
-  apsNode.      Create (nAp);        //3 Nodes(Ap1 Ap2 and Ap3)-----node 2,3,4
-  hostsNode.    Create (nHost);      //2 Nodes(terminal1 and terminal2)-----node 5,6
+  of13SwitchesNode.   Create (nSwitch);    //2 Nodes(switch1 and switch2)-----node 0,1
+  apsNode.            Create (nAp);        //3 Nodes(Ap1 Ap2 and Ap3)-----node 2,3,4
+  hostsNode.          Create (nHost);      //2 Nodes(terminal1 and terminal2)-----node 5,6
 
-  staWifi1Nodes.Create(nAp1Station);    // node 7,8,9
-  staWifi2Nodes.Create(nAp2Station);    // node 10,11,12,13
-  staWifi3Nodes.Create(nAp3Station);    //  node 14
+  staWifiNodes.Get(0).Create(nAp1Station);    // node 7,8,9
+  staWifiNodes.Get(1).Create(nAp2Station);    // node 10,11,12,13
+  staWifiNodes.Get(2).Create(nAp3Station);    //  node 14
   
   Ptr<Node> ap1WifiNode = apsNode.Get (0);
   Ptr<Node> ap2WifiNode = apsNode.Get (1);
@@ -465,53 +470,71 @@ main (int argc, char *argv[])
 
   NS_LOG_UNCOND ("------------Creating Devices------------");
   /* CSMA Devices */
-  NetDeviceContainer ap1CsmaDevice, ap2CsmaDevice, ap3CsmaDevice;
+  NetDeviceContainer apCsmaDevices[nAp];
+  for (size_t i = 0; i < nAp; i++)
+  {
+    apCsmaDevices[i] = NetDeviceContainer();
+  }
+
   NetDeviceContainer hostsDevice;
-  NetDeviceContainer switch1Device, switch2Device;
+  
+  NetDeviceContainer of13SwitchPorts[nSwitch];  //两个switch的网卡们(ports)
+  for (size_t i = 0; i < nSwitch; i++)
+  {
+    of13SwitchPorts[i] = NetDeviceContainer();
+  }
 
   
   /* WIFI Devices */
-  NetDeviceContainer stasWifi1Device, apWifi1Device;
-  NetDeviceContainer stasWifi2Device, apWifi2Device;
-  NetDeviceContainer stasWifi3Device, apWifi3Device;
+  NetDeviceContainer stasWifiDevices[nAp]; // 各个WIFI网络的STA的数组，每个NetDeviceContainer里包含各自WIFI网络的网卡
+  for (size_t i = 0; i < nAp; i++)
+  {
+    stasWifiDevices[i] = NetDeviceContainer();
+  }
+  NetDeviceContainer apWifiDevices[nAp]; // 各个WIFI网络的AP数组，每个NetDeviceContainer里包含各种WIFI网络的网卡
+  for (size_t i = 0 ; i <nAp; i++)
+  {
+    apWifiDevices[i] = NetDeviceContainer();
+  }
 
   
   NS_LOG_UNCOND ("------------Building Topology-------------");
 
   NetDeviceContainer link;
-  /* Create the csma links, from each AP && terminals to the switch */
 
   /* #1 Connect  switch1 to  switch2 */
-  link = csma.Install (NodeContainer(switchesNode.Get(0),switchesNode.Get(1)));  
-  switch1Device. Add(link.Get(0));
-  switch2Device. Add(link.Get(1));
+  link = csma.Install (NodeContainer(of13SwitchesNode.Get(0),of13SwitchesNode.Get(1)));  
+  of13SwitchPorts.Get(0). Add(link.Get(0));
+  of13SwitchPorts.Get(1). Add(link.Get(1));
+
   
   /* #2 Connect AP1, AP2 and AP3 to switch1 ！！！*/  
   for (uint32_t i = 0; i < nAp; i++)
   {
-    link = csma.Install (NodeContainer(apsNode.Get(i), switchesNode.Get(0)));   // Get(0) for switch1
+    link = csma.Install (NodeContainer(apsNode.Get(i), of13SwitchesNode.Get(0)));   // Get(0) for switch1
     if (i == 0)
     {
-      ap1CsmaDevice. Add(link.Get(0));
+      apCsmaDevices.Get(0). Add(link.Get(0));
     }
     else if (i == 1)
     {
-      ap2CsmaDevice. Add(link.Get(0));
+      apCsmaDevices.Get(1). Add(link.Get(0));
     }
     else if (i == 2)
     {
-      ap3CsmaDevice. Add(link.Get(0));
+      apCsmaDevices.Get(2). Add(link.Get(0));
     }
-    switch1Device. Add(link.Get(1));
+    //switch1Device. Add(link.Get(1));
+    of13SwitchPorts.Get(0). Add(link.Get(1));
   }
 
 
   /* #3 Connect host1 and host2 to  switch2  */
   for (uint32_t i = 0; i < nHost; i++)
   {
-    link = csma.Install (NodeContainer(hostsNode.Get(i), switchesNode.Get(1)));   // Get(1) for switch2
+    link = csma.Install (NodeContainer(hostsNode.Get(i), of13SwitchesNode.Get(1)));   // Get(1) for switch2
     hostsDevice. Add(link.Get(0));
-    switch2Device. Add(link.Get(1));
+    of13SwitchPorts.Get(1). Add(link.Get(1)); // switch2
   }
 
   NS_LOG_UNCOND ("----------Configuring WIFI networks----------");
@@ -523,9 +546,9 @@ main (int argc, char *argv[])
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
                    "ActiveProbing", BooleanValue (false));
-  stasWifi1Device = wifi.Install(wifiPhy, wifiMac, staWifi1Nodes );
+  stasWifiDevices.Get(0) = wifi.Install(wifiPhy, wifiMac, staWifiNodes.Get(0) );
   wifiMac.SetType ("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
-  apWifi1Device   = wifi.Install(wifiPhy, wifiMac, ap1WifiNode);
+  apWifiDevices.Get(0)   = wifi.Install(wifiPhy, wifiMac, ap1WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (1 % 3) * 5));    // 6  
@@ -533,9 +556,9 @@ main (int argc, char *argv[])
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
                    "ActiveProbing", BooleanValue (false));
-  stasWifi2Device = wifi.Install(wifiPhy, wifiMac, staWifi2Nodes );
+  stasWifiDevices.Get(1) = wifi.Install(wifiPhy, wifiMac, staWifiNodes.Get(1) );
   wifiMac.SetType ("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
-  apWifi2Device   = wifi.Install(wifiPhy, wifiMac, ap2WifiNode);
+  apWifiDevices.Get(1)   = wifi.Install(wifiPhy, wifiMac, ap2WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (2 % 3) * 5));    // 11
@@ -543,9 +566,9 @@ main (int argc, char *argv[])
   wifiMac.SetType ("ns3::StaWifiMac", 
                   "Ssid", SsidValue (ssid), 
                   "ActiveProbing", BooleanValue (false));
-  stasWifi3Device = wifi.Install(wifiPhy, wifiMac, staWifi3Nodes );
+  stasWifiDevices.Get(2) = wifi.Install(wifiPhy, wifiMac, staWifiNodes.Get(2) );
   wifiMac.SetType ("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
-  apWifi3Device   = wifi.Install(wifiPhy, wifiMac, ap3WifiNode);
+  apWifiDevices.Get(2)   = wifi.Install(wifiPhy, wifiMac, ap3WifiNode);
 
   MobilityHelper mobility1;
   /* for staWifi--1--Nodes */
@@ -559,7 +582,7 @@ main (int argc, char *argv[])
     );    // "GridWidth", UintegerValue(3),
   mobility1.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", 
     "Bounds", RectangleValue (Rectangle (50, 150, 40, 120)));
-  mobility1.Install (staWifi1Nodes);
+  mobility1.Install (staWifiNodes.Get(0));
 
   /* for staWifi--2--Nodes */
   MobilityHelper mobility2;
@@ -573,14 +596,14 @@ main (int argc, char *argv[])
     );    // "GridWidth", UintegerValue(3),
   mobility2.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", 
     "Bounds", RectangleValue (Rectangle (150, 250, 40, 120)));
-  mobility2.Install (staWifi2Nodes);
+  mobility2.Install (staWifiNodes.Get(1));
   
   /* for sta-1-Wifi-3-Node 要让Wifi3网络中的Sta1以恒定速度移动  */
   MobilityHelper mobConstantSpeed;
   mobConstantSpeed.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
-  mobConstantSpeed.Install (staWifi3Nodes.Get(0));  // Wifi-3中的第一个节点(即Node14)安装
+  mobConstantSpeed.Install (staWifiNodes.Get(2).Get(0));  // Wifi-3中的第一个节点(即Node14)安装
   
-  Ptr <ConstantVelocityMobilityModel> velocityModel = staWifi3Nodes.Get(0)->GetObject<ConstantVelocityMobilityModel>();
+  Ptr <ConstantVelocityMobilityModel> velocityModel = staWifiNodes.Get(2).Get(0)->GetObject<ConstantVelocityMobilityModel>();
   velocityModel->SetPosition(mPosition);
   velocityModel->SetVelocity(mVelocity);
 
@@ -593,47 +616,38 @@ main (int argc, char *argv[])
   mobConstantPosition.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobConstantPosition.Install (apsNode);
   mobConstantPosition.Install (hostsNode);
-  //mobConstantPosition.Install (staWifi3Nodes);
-  mobConstantPosition.Install (switchesNode);
+  //mobConstantPosition.Install (staWifiNodes.Get(2));
+  mobConstantPosition.Install (of13SwitchesNode);
 
   
   NS_LOG_UNCOND ("----------Installing Bridge NetDevice----------");
 
-  Ptr<Node> switch1Node = switchesNode.Get (0);
-  Ptr<Node> switch2Node = switchesNode.Get (1);
+  Ptr<Node> of13Switch1Node = of13SwitchesNode.Get (0);
+  Ptr<Node> of13Switch2Node = of13SwitchesNode.Get (1);
   /*!!!!!!!!!!!! 关键的 BridgeHelper !!!!!!!!!!!*/
-  BridgeHelper bridge1, bridge2;
-  /* 
-    每个Switch中，与AP相连的CSMA网卡，和 与另一个Switch相连的CSMA网卡 构成一个`BridgeNetDevice`
-    下面表示在某Node上安装 ns3::BridgeNetDevice
-  */
-  bridge1. Install(switch1Node, switch1Device);
-  bridge2. Install(switch2Node, switch2Device);
 
   // 每个AP中，CSMA网卡与WIFI网卡构成一个`BridgeNetDevice`
   BridgeHelper bridgeForAP1, bridgeForAP2, bridgeForAP3;
-  bridgeForAP1. Install(apsNode.Get (0), NetDeviceContainer(apWifi1Device, ap1CsmaDevice));
-  bridgeForAP2. Install(apsNode.Get (1), NetDeviceContainer(apWifi2Device, ap2CsmaDevice));
-  bridgeForAP3. Install(apsNode.Get (2), NetDeviceContainer(apWifi3Device, ap3CsmaDevice));
+  bridgeForAP1. Install(apsNode.Get (0), NetDeviceContainer(apWifiDevices.Get(0), apCsmaDevices.Get(0)));
+  bridgeForAP2. Install(apsNode.Get (1), NetDeviceContainer(apWifiDevices.Get(1), apCsmaDevices.Get(1)));
+  bridgeForAP3. Install(apsNode.Get (2), NetDeviceContainer(apWifiDevices.Get(2), apCsmaDevices.Get(2)));
 
-  NS_LOG_UNCOND ("------Configuring OpenFlow Switch && Controller------");
+  NS_LOG_UNCOND ("------Configuring OpenFlow1.3 Switch && Controller------");
   
-  OpenFlowSwitchHelper switchHelper;
-  /* OpenFlowSwitchNetDevice::SetController (Ptr<ofi::Controller>), 
-     Ptr<Node>::AddDevice (OpenFlowSwitchNetDevice), 
-     OpenFlowSwitchNetDevice::AddSwitchPort()
-  是在
-  OpenFlowSwitchHelper::Install()方法的实现中调用的
-
-  */
-  Ptr<ns3::ofi::LearningController> controller = CreateObject<ns3::ofi::LearningController> ();
-  if (!timeout.IsZero ()) controller->SetAttribute ("ExpirationTime", TimeValue (timeout));
-  switchHelper.Install (switch1Node, switch1Device, controller);
-  //switchHelper.Install (switch2Node, switch2Device, controller);
-
-  Ptr<ns3::ofi::LearningController> controller2 = CreateObject<ns3::ofi::LearningController> ();
-  if (!timeout.IsZero ()) controller2->SetAttribute ("ExpirationTime", TimeValue (timeout));
-  switchHelper.Install (switch2Node, switch2Device, controller2);
+  Ptr<OFSwitch13Helper> of13Helper = CreateObject<OFSwitch13Helper> ();
+  // Controller节点
+  Ptr<Node> of13ControllerNode = CreateObject<Node> ();
+  Ptr<OFSwitch13Controller>         of13ControllerApp;
+  Ptr<OFSwitch13LearningController> learningCtrl;
+  of13ControllerApp = of13Helper->InstallDefaultController (of13ControllerNode);
+  learningCtrl = DynamicCast<OFSwitch13LearningController> (of13ControllerApp); //转型
+  OFSwitch13DeviceContainer of13SwitchDevices[nSwitch];
+  // 第i个of13SwitchDevices是通过在第i个of13SwitchesNode上安装第i个of13SwitchPorts得到的
+  for (size_t i = 0; i < nSwitch; i++)
+  {
+    of13SwitchDevices[i] = 
+        of13Helper->InstallSwitch (of13SwitchesNode.Get(i), of13SwitchPorts.Get(i));
+  }
   
 
 
@@ -644,10 +658,10 @@ main (int argc, char *argv[])
 
   internet.Install (apsNode);
   internet.Install (hostsNode);
-  internet.Install (switchesNode); // 给交换机装上Internet之后，交换机就有了回环网卡
-  internet.Install (staWifi1Nodes);
-  internet.Install (staWifi2Nodes);
-  internet.Install (staWifi3Nodes);
+  internet.Install (of13SwitchesNode); // 给交换机装上Internet之后，交换机就有了回环网卡
+  internet.Install (staWifiNodes.Get(0));
+  internet.Install (staWifiNodes.Get(1));
+  internet.Install (staWifiNodes.Get(2));
 
   
   NS_LOG_UNCOND ("-----------Assigning IP Addresses.-----------");
@@ -665,15 +679,15 @@ main (int argc, char *argv[])
 
   h1h2Interface      = ip.Assign (hostsDevice);   // 10.0.0.1~2
 
-  // 供三组STA
-  stasWifi1Interface = ip.Assign (stasWifi1Device); // 10.0.0.0.3~5
-  stasWifi2Interface = ip.Assign (stasWifi2Device); // 10.0.0.0.6~9
-  stasWifi3Interface = ip.Assign (stasWifi3Device); // 10.0.0.0.10
+  // 共三组STA
+  stasWifi1Interface = ip.Assign (stasWifiDevices.Get(0)); // 10.0.0.0.3~5
+  stasWifi2Interface = ip.Assign (stasWifiDevices.Get(1)); // 10.0.0.0.6~9
+  stasWifi3Interface = ip.Assign (stasWifiDevices.Get(2)); // 10.0.0.0.10
 
 
 
   NS_LOG_UNCOND ("-----------Creating Applications.-----------");
-  uint16_t port = 9;   // Discard port (RFC 863)
+  uint16_t port = 8080;
   
   
   /*
@@ -691,9 +705,9 @@ main (int argc, char *argv[])
   client.SetAttribute ("Interval", TimeValue (Seconds(nInterval)));  
   client.SetAttribute ("PacketSize", UintegerValue (nPacketSize));
   // for node 14
-  ApplicationContainer clientApps = client.Install(staWifi3Nodes.Get(0));
+  ApplicationContainer clientApps = client.Install(staWifiNodes.Get(2).Get(0));
   // for node 10
-  //ApplicationContainer clientApps = client.Install(staWifi2Nodes.Get(0));
+  //ApplicationContainer clientApps = client.Install(staWifiNodes.Get(1).Get(0));
   // for node 5
   //ApplicationContainer clientApps = client.Install(hostsNode.Get(0));
   clientApps.Start (Seconds(1.1));  
@@ -717,7 +731,7 @@ main (int argc, char *argv[])
                          InetSocketAddress (h1h2Interface.GetAddress(1), port));
   // Set the amount of data to send in bytes.  Zero is unlimited.
   source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-  ApplicationContainer sourceApps = source.Install (staWifi3Nodes.Get(0));
+  ApplicationContainer sourceApps = source.Install (staWifiNodes.Get(2).Get(0));
   sourceApps.Start (Seconds (1.0));
   sourceApps.Stop (Seconds (10.0));
   
@@ -731,7 +745,7 @@ main (int argc, char *argv[])
 
   // Create and bind the socket...
   //Ptr<Socket> localSocket =
-    //Socket::CreateSocket (staWifi3Nodes.Get(0), TcpSocketFactory::GetTypeId ());
+    //Socket::CreateSocket (staWifiNodes.Get(2).Get(0), TcpSocketFactory::GetTypeId ());
   //localSocket->Bind ();
 
 
@@ -762,17 +776,17 @@ main (int argc, char *argv[])
       //AsciiTraceHelper ascii;
 
       //csma.EnableAsciiAll (ascii.CreateFileStream ("goal-topo-SDN-handover/goal-topo-SDN-handover.tr"));
-      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap1-wifi", apWifi1Device);
-      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap2-wifi", apWifi2Device);
-      //wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap2-sta1-wifi", stasWifi2Device);
-      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap3-wifi", apWifi3Device);
-      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap3-sta1-wifi", stasWifi3Device);
+      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap1-wifi", apWifiDevices.Get(0));
+      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap2-wifi", apWifiDevices.Get(1));
+      //wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap2-sta1-wifi", stasWifiDevices.Get(1));
+      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap3-wifi", apWifiDevices.Get(2));
+      wifiPhy.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap3-sta1-wifi", stasWifiDevices.Get(2));
       // WifiMacHelper doesnot have `EnablePcap()` method
       //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-switch1-csma", switch1Device);
       //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-switch2-csma", switch2Device);
-      //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap1-csma", ap1CsmaDevice);
-      //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap2-csma", ap2CsmaDevice);
-      //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap3-csma", ap3CsmaDevice);
+      //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap1-csma", apCsmaDevices.Get(0));
+      //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap2-csma", apCsmaDevices.Get(1));
+      //csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-ap3-csma", apCsmaDevices.Get(2));
       csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-H1-csma", hostsDevice.Get(0));
       csma.EnablePcap ("goal-topo-SDN-handover/goal-topo-SDN-handover-H2-csma", hostsDevice.Get(1));
     }
@@ -788,14 +802,14 @@ main (int argc, char *argv[])
   //csma.EnablePcapAll ("goal-topo", false);
 
   AnimationInterface anim ("goal-topo-SDN-handover/goal-topo-SDN-handover.xml");
-  anim.SetConstantPosition(switch1Node,200,0);             // s1-----node 0
-  anim.SetConstantPosition(switch2Node,400,0);             // s2-----node 1
+  anim.SetConstantPosition(of13SwitchesNode.Get (0),200,0);             // s1-----node 0
+  anim.SetConstantPosition(of13SwitchesNode.Get (1),400,0);             // s2-----node 1
   anim.SetConstantPosition(apsNode.Get(0),100,20);      // Ap1----node 2
   anim.SetConstantPosition(apsNode.Get(1),200,20);      // Ap2----node 3
   anim.SetConstantPosition(apsNode.Get(2),300,20);      // Ap3----node 4
   anim.SetConstantPosition(hostsNode.Get(0),350,60);    // H1-----node 5
   anim.SetConstantPosition(hostsNode.Get(1),400,60);    // H2-----node 6
-  //anim.SetConstantPosition(staWifi3Nodes.Get(0),55,40);  //   -----node 14
+  //anim.SetConstantPosition(staWifiNodes.Get(2).Get(0),55,40);  //   -----node 14
 
   anim.EnablePacketMetadata();   // to see the details of each packet
 
@@ -908,4 +922,8 @@ main (int argc, char *argv[])
    * are used respectively to activate/deactivate the histograms and the per-probe detailed stats.
    */
   Simulator::Destroy ();
+
+  //接收到多少字节
+  Ptr<PacketSink> sink = DynamicCast<PacketSink> (sinkApps.Get (0));
+  std::cout << "Total bytes Received : " << sink->GetTotalRx () << std::endl;
 }

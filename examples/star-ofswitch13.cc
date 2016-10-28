@@ -81,7 +81,8 @@ main (int argc, char *argv[])
   csmaHelper.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
 
   NetDeviceContainer hostDevices;
-  NetDeviceContainer of13SwitchPorts;
+  NetDeviceContainer of13SwitchPorts; // 这里因为只有一个switch，所以没有创建数组
+  //把每个host的一个网卡都连到switch上
   for (size_t i = 0; i < nHosts; i++)
     {
       NodeContainer nc (hosts.Get (i), of13SwitchNode);
