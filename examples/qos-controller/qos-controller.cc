@@ -1,26 +1,12 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2016 University of Campinas (Unicamp)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Author:  Luciano Chaves <luciano@lrc.ic.unicamp.br>
- */
-
 #include "qos-controller.h"
 
 NS_LOG_COMPONENT_DEFINE ("QosController");
+/*
+The macro NS_OBJECT_ENSURE_REGISTERED (classname) is needed 
+also once for every class that defines a new GetTypeId method, 
+and it does the actual registration of the class into the system. 
+The Object model chapter discusses this in more detail.
+*/
 NS_OBJECT_ENSURE_REGISTERED (QosController);
 
 QosController::QosController ()
@@ -42,6 +28,13 @@ QosController::DoDispose ()
   Application::DoDispose ();
 }
 
+/*
+What is the GetTypeId (void) function? This function does a few things. 
+It registers a unique string into the TypeId system. 
+It establishes the hierarchy of objects in the attribute system (via SetParent). 
+It also declares that certain objects can be created 
+via the object creation framework (AddConstructor).
+*/
 TypeId
 QosController::GetTypeId (void)
 {
@@ -81,6 +74,12 @@ QosController::GetTypeId (void)
   return tid;
 }
 
+
+/*
+HandlePacketIn() is used to filter packets sent to the controller by the switch. 
+Look for L2 switching information, update the structures and send a packet-out back.
+用来匹配从switch发往controller的包
+*/
 ofl_err
 QosController::HandlePacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_t xid)
 {
@@ -97,12 +96,12 @@ QosController::HandlePacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_
       ofl_match_tlv *tlv = oxm_match_lookup (OXM_OF_ETH_TYPE, (ofl_match*)msg->match);
       memcpy (&ethType, tlv->value, OXM_LENGTH (OXM_OF_ETH_TYPE));
 
-      if (ethType == ArpL3Protocol::PROT_NUMBER)
+      if (ethType == ArpL3Protocol::PROT_NUMBER)    // ARP protocol number:0x0806
         {
           // ARP packet
           return HandleArpPacketIn (msg, swtch, xid);
         }
-      else if (ethType == Ipv4L3Protocol::PROT_NUMBER)
+      else if (ethType == Ipv4L3Protocol::PROT_NUMBER)  // IP protocol number:0x0800
         {
           // TCP packet (from incoming connection)
           return HandleConnectionRequest (msg, swtch, xid);
@@ -114,6 +113,10 @@ QosController::HandlePacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_
   return 0;
 }
 
+/*
+Function invoked whenever a switch starts a TCP connection to this controller. 
+每当一个switch向controller发起TCP连接请求时调用(继承自 OFSwitch13Controller)
+*/
 void
 QosController::ConnectionStarted (SwitchInfo swtch)
 {
@@ -122,31 +125,51 @@ QosController::ConnectionStarted (SwitchInfo swtch)
   // This function is called after a successfully handshake between controller
   // and each switch. Let's check the switch for proper configuration.
 
+/*
+如果是来自border switch(10.100.150.1),则配置border switch
+*/
   if (swtch.ipv4.IsEqual (Ipv4Address ("10.100.150.1")))
     {
       ConfigureBorderSwitch (swtch);
     }
+/*
+如果是来自aggregation switch(10.100.150.5),则配置aggregation switch
+*/
   else if (swtch.ipv4.IsEqual (Ipv4Address ("10.100.150.5")))
     {
       ConfigureAggregationSwitch (swtch);
     }
 }
 
+
+/*
+ports 1 and 2: 右边的，从aggregation switch方向(即client方向)来的流量的接口
+ports 3 and 4: 左边的，往两个server方向去的流量的接口
+*/
 void
 QosController::ConfigureBorderSwitch (SwitchInfo swtch)
 {
   NS_LOG_FUNCTION (this << swtch.ipv4);
-
+/*
+`DpctlCommand`
+Execute a dpctl command to interact with the switch.
+*/
   // For packet-in messages, send only the first 128 bytes to the controller.
   DpctlCommand (swtch, "set-config miss=128");
 
   // Send ARP request to the controller when coming from the external side (ports 1 and 2)
+  /* 0x0806代表ARP协议，0x0800代表IP协议 
+  当收到来自端口1和2的ARP协议流量时，将流量流量发给controller
+  */
   DpctlCommand (swtch, "flow-mod cmd=add,table=0,prio=20 "
                 "in_port=1,eth_type=0x0806,arp_op=1 apply:output=ctrl");
   DpctlCommand (swtch, "flow-mod cmd=add,table=0,prio=20 "
                 "in_port=2,eth_type=0x0806,arp_op=1 apply:output=ctrl");
 
   // Flood any other ARP packet (note the lower priority thant previous rule)
+  /*
+  将其他的ARP协议流量泛洪(注意这里的优先级为10，比先前的20要低)
+  */
   DpctlCommand (swtch, "flow-mod cmd=add,table=0,prio=10 eth_type=0x0806 apply:output=flood");
 
   // Create the string with setField instructions for outputting traffic
@@ -221,6 +244,13 @@ QosController::ConfigureAggregationSwitch (SwitchInfo swtch)
   DpctlCommand (swtch, "flow-mod cmd=add,table=0,prio=500 in_port=3 write:group=1");
 }
 
+/*
+Handle ARP request messages.
+xid: Transaction id.
+
+HandleArpPacketIn() exemplifies how to create a new packet at the controller 
+and send to the network over a packet-out message.
+*/
 ofl_err
 QosController::HandleArpPacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_t xid)
 {
@@ -287,6 +317,14 @@ QosController::HandleArpPacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint
   return 0;
 }
 
+
+/*
+Handle TCP connection request. 
+xid: Transaction id.
+
+oxm_match_lookup() is used across the code to extract match information 
+from the message received by the controller.
+*/
 ofl_err
 QosController::HandleConnectionRequest (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_t xid)
 {

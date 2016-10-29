@@ -750,7 +750,7 @@ main (int argc, char *argv[])
   sourceHelper.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
   ApplicationContainer sourceApps = sourceHelper.Install (staWifiNodes[2].Get(0));
   sourceApps.Start (Seconds (1.0));
-  sourceApps.Stop (Seconds (10.0));
+  sourceApps.Stop (Seconds (stopTime));
   
 
 

@@ -1,23 +1,3 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2016 University of Campinas (Unicamp)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Author:  Luciano Chaves <luciano@lrc.ic.unicamp.br>
- */
-
 /**
  *   Servers                 OpenFlow controllers                Clients
  *  +-------+             +-------+       +-------+             +-------+
@@ -68,9 +48,9 @@ main (int argc, char *argv[])
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
 
   bool verbose = false;
-  bool trace = false;
+  bool trace = true;
   uint16_t numNodes = 4;
-  uint16_t simTime = 101;
+  uint16_t simTime = 11;
 
   CommandLine cmd;
   cmd.AddValue ("verbose", "Verbose log if true", verbose);
@@ -81,11 +61,11 @@ main (int argc, char *argv[])
 
   if (verbose)
     {
-      LogComponentEnable ("OFSwitch13Helper", LOG_LEVEL_ALL);
-      LogComponentEnable ("OFSwitch13Device", LOG_LEVEL_ALL);
-      LogComponentEnable ("OFSwitch13Interface", LOG_LEVEL_ALL);
-      LogComponentEnable ("OFSwitch13Controller", LOG_LEVEL_ALL);
-      LogComponentEnable ("OFSwitch13LearningController", LOG_LEVEL_ALL);
+      //LogComponentEnable ("OFSwitch13Helper", LOG_LEVEL_ALL);
+      //LogComponentEnable ("OFSwitch13Device", LOG_LEVEL_ALL);
+      //LogComponentEnable ("OFSwitch13Interface", LOG_LEVEL_ALL);
+      //LogComponentEnable ("OFSwitch13Controller", LOG_LEVEL_ALL);
+      //LogComponentEnable ("OFSwitch13LearningController", LOG_LEVEL_ALL);
       LogComponentEnable ("QosController", LOG_LEVEL_ALL);
     }
 
@@ -94,6 +74,7 @@ main (int argc, char *argv[])
 
   // Create the server, client, switch and controller nodes
   NodeContainer serverNodes, clientNodes, switchNodes, controllerNodes;
+  // server节点首先创建，所以Mac地址为1的首先会分配到server节点上
   serverNodes.Create (2);
   switchNodes.Create (3);
   controllerNodes.Create (2);
@@ -152,6 +133,7 @@ main (int argc, char *argv[])
   // to configure the OpenFlow channels.
   Ptr<OFSwitch13Helper> ofLearningHelper = CreateObject<OFSwitch13Helper> ();
   ofLearningHelper->SetAddressBase ("10.100.151.0", "255.255.255.252");
+  // An Learning OpenFlow 1.3 controller, works as L2 switch
   Ptr<OFSwitch13LearningController> learningCtrl = CreateObject<OFSwitch13LearningController> ();
   ofLearningHelper->InstallControllerApp (controllerNodes.Get (1), learningCtrl);
 
@@ -171,7 +153,7 @@ main (int argc, char *argv[])
   // Set IPv4 server and client addresses
   Ipv4AddressHelper ipv4switches;
   Ipv4InterfaceContainer internetIpIfaces;
-  ipv4switches.SetBase ("10.1.1.0", "255.255.255.0", "0.0.0.2");
+  ipv4switches.SetBase ("10.1.1.0", "255.255.255.0", "0.0.0.2"); //表示从10.1.1.2开始分
   internetIpIfaces = ipv4switches.Assign (serverDevices);
   internetIpIfaces = ipv4switches.Assign (clientDevices);
 
@@ -179,16 +161,19 @@ main (int argc, char *argv[])
   // server. The server IP address 10.1.1.1 is attended by the border switch,
   // which redirects the traffic to  internal servers, equalizing the number of
   // connections to each server.
+  // 使得每个server的连接数负载均衡
   Ipv4Address serverAddr ("10.1.1.1");
 
   // Installing a sink application at server nodes
   PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), 9));
   ApplicationContainer sinkApps = sinkHelper.Install (serverNodes);
   sinkApps.Start (Seconds (0));
+  sinkApps.Stop (Seconds (simTime));
 
   // Installing a sender application at client nodes
   BulkSendHelper senderHelper ("ns3::TcpSocketFactory", InetSocketAddress (serverAddr, 9));
   ApplicationContainer senderApps = senderHelper.Install (clientNodes);
+  senderApps.Stop (Seconds (simTime));
 
   // Get random start times
   Ptr<UniformRandomVariable> randomStart = CreateObject<UniformRandomVariable> ();
@@ -212,9 +197,9 @@ main (int argc, char *argv[])
     {
       ofLearningHelper->EnableOpenFlowPcap ();
       ofQosHelper->EnableOpenFlowPcap ();
-      csmaHelper.EnablePcap ("ofswitch", switchNodes, true);
-      csmaHelper.EnablePcap ("server", serverDevices);
-      csmaHelper.EnablePcap ("client", clientDevices);
+      csmaHelper.EnablePcap ("qos-controller/ofswitch", switchNodes, true);
+      csmaHelper.EnablePcap ("qos-controller/server", serverDevices);
+      csmaHelper.EnablePcap ("qos-controller/client", clientDevices);
     }
 
   // Run the simulation for simTime seconds
