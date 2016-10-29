@@ -122,6 +122,7 @@ main (int argc, char *argv[])
   of13Helper0->InstallSwitch (of13SwitchNodes.Get (0), of13SwitchPorts [0]);
   of13Helper0->InstallSwitch (of13SwitchNodes.Get (1), of13SwitchPorts [1]);
 
+  // 默认是 10.100.150.0/24网段。of13Helper0已经有这个网段了，所以of13Helper1要指明它所在网段
   of13Helper1->SetAddressBase ("10.100.151.0", "255.255.255.0");
   Ptr<OFSwitch13LearningController> learningCtrl1;
   learningCtrl1 = DynamicCast<OFSwitch13LearningController> (of13Helper1->InstallDefaultController (of13ControllerNode1));

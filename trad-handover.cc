@@ -433,7 +433,7 @@ main (int argc, char *argv[])
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
   wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
-  WifiMacHelper wifiMac;
+  QosWifiMacHelper wifiMac;
 
  
   NS_LOG_UNCOND ("------------Creating Nodes------------");
