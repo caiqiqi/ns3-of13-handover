@@ -1,46 +1,18 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2016 University of Campinas (Unicamp)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Author:  Luciano Chaves <luciano@lrc.ic.unicamp.br>
- */
-
 /**
- *   Servers                 OpenFlow controllers                Clients
- *  +-------+             +-------+       +-------+             +-------+
- *  | Srv 0 |=======+   +=| Ctr 0 |=+     | Ctr 1 |=+   +=======| Cli 0 |
- *  +-------+       |   | +-------+ |     +-------+ |   |       +-------+
- *                  |   |           |               |   |
- *                +-------+       +-------+       +-------+     +-------+
- *                | Swt 0 |#######| Swt 1 |=======| Swt 2 |=====| Cli 1 |
- *                +-------+       +-------+       +-------+     +-------+
- *                  |         OpenFlow switches         |          ...
- *  +-------+       |                                   |       +-------+
- *  | Srv 1 |=======+                                   +=======| Cli N |
- *  +-------+                                                   +-------+
- *
- *  Swt 0 --> Border switch
- *  Swt 1 --> Aggregation switch
- *  Swt 2 --> Client switch
- *
- *  Ctr 0 --> QoS controller
- *  Ctr 1 --> Learning controller
- *
- *  ====  --> 100 Mbps CSMA links
- *  ####  --> 2 x 10 Mbps CSMA links
+// Network topology
+//
+//           ----Controller---
+//            |             |
+//         ----------     ---------- 
+//  AP3 -- | Switch1 | --| Switch2 | -- H2
+//         ----------     ----------
+//   |      |       |          |
+//   X     AP1     AP2         H1
+//        | | |   | |||
+//        X X |   X X|X
+//            |      |
+//            m2     m1  
+//
  *
  **/
 
@@ -50,7 +22,7 @@
 #include <ns3/internet-module.h>
 #include <ns3/applications-module.h>
 #include <ns3/ofswitch13-module.h>
-#include "qos-controller.h"
+#include "wifi-controller.h"
 
 using namespace ns3;
 
@@ -60,9 +32,6 @@ main (int argc, char *argv[])
   // Configure dedicated connections between controller and switches
   Config::SetDefault ("ns3::OFSwitch13Helper::ChannelType",
                       EnumValue (OFSwitch13Helper::DEDICATEDCSMA));
-
-  // Increase TCP MSS for larger packets
-  Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1400));
 
   // Enable Checksum computations
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));

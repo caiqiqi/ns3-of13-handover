@@ -549,38 +549,41 @@ main (int argc, char *argv[])
 
   NS_LOG_UNCOND ("----------Configuring WIFI networks----------");
   Ssid ssid = Ssid ("ssid-default");
+  Ssid ssid1 = Ssid ("ssid-1");
+  Ssid ssid2 = Ssid ("ssid-2");
+  Ssid ssid3 = Ssid ("ssid-3");
   //----------------------- Network AP1--------------------
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (0 % 3) * 5));   // 1
 
   wifiMac.SetType ("ns3::StaWifiMac", 
-                   "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));
+                   
+                   "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
   stasWifiDevices[0] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[0] );
   wifiMac.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid));
+                   "Ssid", SsidValue (ssid1));
   apWifiDevices[0]   = wifi.Install(wifiPhy, wifiMac, ap1WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (1 % 3) * 5));    // 6  
 
   wifiMac.SetType ("ns3::StaWifiMac", 
-                   "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));
+                   
+                   "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
   stasWifiDevices[1] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[1] );
   wifiMac.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid));
+                   "Ssid", SsidValue (ssid2));
   apWifiDevices[1]   = wifi.Install(wifiPhy, wifiMac, ap2WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (2 % 3) * 5));    // 11
 
   wifiMac.SetType ("ns3::StaWifiMac", 
-                  "Ssid", SsidValue (ssid), 
-                  "ActiveProbing", BooleanValue (false));
+                  
+                  "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid));
+                   "Ssid", SsidValue (ssid3));
   apWifiDevices[2]   = wifi.Install(wifiPhy, wifiMac, ap3WifiNode);
 
   MobilityHelper mobility1;
