@@ -486,7 +486,7 @@ main (int argc, char *argv[])
     apCsmaDevices[i] = NetDeviceContainer();
   }
 
-  NetDeviceContainer hostsDevice;
+  NetDeviceContainer hostDevices;
   
   NetDeviceContainer of13SwitchPorts[nSwitch];  //两个switch的网卡们(ports)
   for (size_t i = 0; i < nSwitch; i++)
@@ -543,7 +543,7 @@ main (int argc, char *argv[])
   for (uint32_t i = 0; i < nHost; i++)
   {
     link = csma.Install (NodeContainer(hostsNode.Get(i), of13SwitchesNode.Get(1)));   // Get(1) for switch2
-    hostsDevice. Add(link.Get(0));
+    hostDevices. Add(link.Get(0));
     of13SwitchPorts[1]. Add(link.Get(1)); // switch2
   }
 
@@ -697,7 +697,7 @@ main (int argc, char *argv[])
 
 
 
-  h1h2Interface      = ip.Assign (hostsDevice);   // 10.0.0.1~2
+  h1h2Interface      = ip.Assign (hostDevices);   // 10.0.0.1~2
 
   // 共三组STA
   stasWifi1Interface = ip.Assign (stasWifiDevices[0]); // 10.0.0.0.3~5
@@ -810,8 +810,8 @@ main (int argc, char *argv[])
       //csma.EnablePcap ("SDN-handover/SDN-handover-ap1-csma", apCsmaDevices[0]);
       //csma.EnablePcap ("SDN-handover/SDN-handover-ap2-csma", apCsmaDevices[1]);
       //csma.EnablePcap ("SDN-handover/SDN-handover-ap3-csma", apCsmaDevices[2]);
-      csma.EnablePcap ("SDN-handover/SDN-handover-H1-csma", hostsDevice.Get(0));
-      csma.EnablePcap ("SDN-handover/SDN-handover-H2-csma", hostsDevice.Get(1));
+      csma.EnablePcap ("SDN-handover/SDN-handover-H1-csma", hostDevices.Get(0));
+      csma.EnablePcap ("SDN-handover/SDN-handover-H2-csma", hostDevices.Get(1));
 
 
       of13Helper->EnableOpenFlowPcap ("SDN-handover/SDN-handover-ofCtrl");
