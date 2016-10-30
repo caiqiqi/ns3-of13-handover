@@ -330,6 +330,7 @@ QosController::HandleConnectionRequest (ofl_msg_packet_in *msg, SwitchInfo swtch
 {
   NS_LOG_FUNCTION (this << swtch.ipv4 << xid);
 
+  // 当前的TCP连接数
   static uint32_t connectionCounter = 0;
   connectionCounter++;
 
@@ -354,10 +355,12 @@ QosController::HandleConnectionRequest (ofl_msg_packet_in *msg, SwitchInfo swtch
   memcpy (&dstPort, tlv->value, OXM_LENGTH (OXM_OF_TCP_DST));
 
   // Check for valid connection request
+  // 确保是发给server的特定端口的(即 10.1.1.1:9)
   NS_ASSERT_MSG (dstIp.IsEqual (serverAddr) && dstPort == m_serverTcpPort,
                  "Invalid IP address / MAC port.");
 
   // Select an internal server to handle this connection
+  // 第奇数个请求发给server2， 第偶数个请求发给server1
   uint16_t serverNumber = 1 + (connectionCounter % 2);
   NS_LOG_INFO ("Connection redirected to server " << serverNumber);
 
@@ -385,6 +388,7 @@ QosController::HandleConnectionRequest (ofl_msg_packet_in *msg, SwitchInfo swtch
   DpctlCommand (swtch, flowCmd.str ());
 
   // Create group action with server number
+  // xmalloc 跟 malloc 的内存分配机制差不多
   ofl_action_group *action = (ofl_action_group*)xmalloc (sizeof (struct ofl_action_group));
   action->header.type = OFPAT_GROUP;
   action->group_id = serverNumber;
