@@ -531,33 +531,33 @@ main (int argc, char *argv[])
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (0 % 3) * 5));   // 1
 
   wifiMac.SetType ("ns3::StaWifiMac", 
-                   
-                   "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
+                   "Ssid", SsidValue (ssid), 
+                   "ActiveProbing", BooleanValue (false));//
   stasWifiDevices[0] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[0] );
   wifiMac.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid1));
+                   "Ssid", SsidValue (ssid));
   apWifiDevices[0]   = wifi.Install(wifiPhy, wifiMac, ap1WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (1 % 3) * 5));    // 6  
 
   wifiMac.SetType ("ns3::StaWifiMac", 
-                   
-                   "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
+                   "Ssid", SsidValue (ssid), 
+                   "ActiveProbing", BooleanValue (false));//
   stasWifiDevices[1] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[1] );
   wifiMac.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid2));
+                   "Ssid", SsidValue (ssid));
   apWifiDevices[1]   = wifi.Install(wifiPhy, wifiMac, ap2WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (2 % 3) * 5));    // 11
 
   wifiMac.SetType ("ns3::StaWifiMac", 
-                  
-                  "ActiveProbing", BooleanValue (true));//"Ssid", SsidValue (ssid), 
+                   "Ssid", SsidValue (ssid), 
+                   "ActiveProbing", BooleanValue (true));//
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid3));
+                   "Ssid", SsidValue (ssid));
   apWifiDevices[2]   = wifi.Install(wifiPhy, wifiMac, ap3WifiNode);
 
   MobilityHelper mobility1;
