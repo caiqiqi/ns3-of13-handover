@@ -580,7 +580,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                   
-                  "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
+                  "ActiveProbing", BooleanValue (true));//"Ssid", SsidValue (ssid), 
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid3));

@@ -49,7 +49,7 @@ main (int argc, char *argv[])
 {
   size_t nSwitches = 1;
   bool verbose = false;
-  bool trace = false;
+  bool trace = true;
 
   CommandLine cmd;
   cmd.AddValue ("switches", "Number of OpenFlow switches", nSwitches);
@@ -155,8 +155,8 @@ main (int argc, char *argv[])
   if (trace)
     {
       of13Helper->EnableOpenFlowPcap ();
-      csmaHelper.EnablePcap ("ofswitch", of13SwitchNodes, true);
-      csmaHelper.EnablePcap ("host", hostDevices);
+      csmaHelper.EnablePcap ("ChainOFSwitch13/ofswitch", of13SwitchNodes, true);
+      csmaHelper.EnablePcap ("ChainOFSwitch13/host", hostDevices);
     }
 
   // Install FlowMonitor

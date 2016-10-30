@@ -90,4 +90,4 @@ private:
   bool      m_linkAggregation;    //!< Enable link aggregation
 };
 
-#endif /* QOS_CONTROLLER_H */
+#endif /* WIFI_CONTROLLER_H */

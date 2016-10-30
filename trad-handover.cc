@@ -47,7 +47,6 @@ using namespace ns3;
 
 
 bool tracing  = true;
-ns3::Time timeout = ns3::Seconds (0);
 
 
 double stopTime = 40.0;  // when the simulation stops
@@ -82,17 +81,6 @@ uint32_t rtslimit = 1500;
 */
 Vector3D mPosition = Vector3D(0.0, 40.0, 0.0);
 Vector3D mVelocity = Vector3D(10.0, 0.0 , 0.0);
-
-bool
-SetTimeout (std::string value)
-{
-  try {
-      timeout = ns3::Seconds (atof (value.c_str ()));
-      return true;
-    }
-  catch (...) { return false; }
-  return false;
-}
 
 
 bool
@@ -566,7 +554,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                   
-                  "ActiveProbing", BooleanValue (false));//"Ssid", SsidValue (ssid), 
+                  "ActiveProbing", BooleanValue (true));//"Ssid", SsidValue (ssid), 
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid3));
