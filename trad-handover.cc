@@ -20,7 +20,6 @@
 #include "ns3/applications-module.h"
 //#include "ns3/flow-monitor-helper.h"
 #include "ns3/flow-monitor-module.h"
-#include "ns3/ofswitch13-module.h"
 #include "ns3/log.h"
 // 给传统交换机(BridgeNetDevice)
 #include "ns3/bridge-module.h"
@@ -421,10 +420,11 @@ main (int argc, char *argv[])
    * Here, it is asking the helper to use the AARF algorithm
    */
   wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
-  //wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
+  //wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ); // 貌似只能在ns-3.25支持
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
-  QosWifiMacHelper wifiMac;
+  //QosWifiMacHelper wifiMac;
+  NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
 
  
   NS_LOG_UNCOND ("------------Creating Nodes------------");
@@ -709,7 +709,7 @@ main (int argc, char *argv[])
   source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
   ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));
   sourceApps.Start (Seconds (1.0));
-  sourceApps.Stop (Seconds (10.0));
+  sourceApps.Stop (Seconds (stopTime));
   
 
 

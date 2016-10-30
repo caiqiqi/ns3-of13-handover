@@ -447,8 +447,8 @@ main (int argc, char *argv[])
    * Here, it is asking the helper to use the AARF algorithm
    */
   wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
-  //wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211g);  
+  //wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);   // 貌似只能在ns-3.25支持
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
   QosWifiMacHelper wifiMac;
 
@@ -797,8 +797,8 @@ main (int argc, char *argv[])
       //csma.EnableAsciiAll (ascii.CreateFileStream ("SDN-handover/SDN-handover.tr"));
 
       // Enable pcap traces
-      wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap1-wifi", apWifiDevices[0]);
-      wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap2-wifi", apWifiDevices[1]);
+      //wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap1-wifi", apWifiDevices[0]);
+      //wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap2-wifi", apWifiDevices[1]);
       //wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap2-sta1-wifi", stasWifiDevices[1]);
       wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap3-wifi", apWifiDevices[2]);
       wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap3-sta1-wifi", stasWifiDevices[2]);
@@ -809,15 +809,15 @@ main (int argc, char *argv[])
       csma.EnablePcap ("SDN-handover/SDN-handover-switch2-csma", of13SwitchPorts[1]);
       //csma.EnablePcap ("SDN-handover/SDN-handover-ap1-csma", apCsmaDevices[0]);
       //csma.EnablePcap ("SDN-handover/SDN-handover-ap2-csma", apCsmaDevices[1]);
-      //csma.EnablePcap ("SDN-handover/SDN-handover-ap3-csma", apCsmaDevices[2]);
-      csma.EnablePcap ("SDN-handover/SDN-handover-H1-csma", hostDevices.Get(0));
+      csma.EnablePcap ("SDN-handover/SDN-handover-ap3-csma", apCsmaDevices[2]);
+      //csma.EnablePcap ("SDN-handover/SDN-handover-H1-csma", hostDevices.Get(0));
       csma.EnablePcap ("SDN-handover/SDN-handover-H2-csma", hostDevices.Get(1));
 
 
       of13Helper->EnableOpenFlowPcap ("SDN-handover/SDN-handover-ofCtrl");
 
-      // Enable datapath logs
-      of13Helper->EnableDatapathLogs ("all");
+      // Enable datapath logs(这个打印在屏幕上的内容太多了，滚都滚不过来)
+      //of13Helper->EnableDatapathLogs ("all");
     }
 
   //
