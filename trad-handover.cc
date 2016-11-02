@@ -347,7 +347,9 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor){
 }
 
 
-
+/*
+要使在handover的时候throughput降低到0，可对AP进行调整，使得AP与STA到某个距离的时候信号降到0，使得连接断开
+*/
 int
 main (int argc, char *argv[])
 {
@@ -373,8 +375,11 @@ main (int argc, char *argv[])
   这里设置为1500，表示1500字节以上的frame要进行RTS/CTS机制
   */
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold",UintegerValue (rtslimit));
-  /* 设置最大WIFI覆盖距离为5m, 超出这个距离之后将无法传输WIFI信号 */
-  //Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (5));
+  /* 
+  x^2 = 20^2 + 50^ => 50 < x < 60
+  设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
+  */
+  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (50));
   
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
@@ -554,7 +559,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (true));//
+                   "ActiveProbing", BooleanValue (fasle));//变成false似乎还快一些
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
