@@ -48,8 +48,8 @@ NS_LOG_COMPONENT_DEFINE ("ExtCtrlOFSwitch13");
 int
 main (int argc, char *argv[])
 {
-  bool verbose = true;
-  bool trace = false;
+  bool verbose = false;
+  bool trace = true;
   std::string tapName = "thetap";
 
   CommandLine cmd;
@@ -135,9 +135,9 @@ main (int argc, char *argv[])
   // Enable pcap traces
   if (trace)
     {
-      of13Helper->EnableOpenFlowPcap ("ofCtrl");
-      csmaHelper.EnablePcap ("ofswitch", NodeContainer (of13SwitchNode), true);
-      csmaHelper.EnablePcap ("host", hostDevices);
+      of13Helper->EnableOpenFlowPcap ("external-controller/ofCtrl");
+      csmaHelper.EnablePcap ("external-controller/ofswitch", NodeContainer (of13SwitchNode), true);
+      csmaHelper.EnablePcap ("external-controller/host", hostDevices);
     }
 
   // Run the simulation

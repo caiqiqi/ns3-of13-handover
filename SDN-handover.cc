@@ -558,7 +558,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));//
+                   "ActiveProbing", BooleanValue (true));//根据Odin改成Active Probing了
   stasWifiDevices[0] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[0] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
@@ -569,7 +569,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));//
+                   "ActiveProbing", BooleanValue (true));//根据Odin改成Active Probing了
   stasWifiDevices[1] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[1] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
@@ -580,7 +580,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));//
+                   "ActiveProbing", BooleanValue (true));//根据Odin改成Active Probing了
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
