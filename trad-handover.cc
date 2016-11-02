@@ -379,7 +379,7 @@ main (int argc, char *argv[])
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
   */
-  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (50));
+  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (35));
   
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
@@ -417,6 +417,7 @@ main (int argc, char *argv[])
   //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
+  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel"); // 无线传输距离限制在35m
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
   wifiPhy.SetChannel (wifiChannel.Create());
@@ -559,7 +560,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (fasle));//变成false似乎还快一些
+                   "ActiveProbing", BooleanValue (false));//变成false似乎还快一些
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));

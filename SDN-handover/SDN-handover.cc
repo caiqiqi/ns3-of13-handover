@@ -31,6 +31,9 @@
 // 用来构造 BridgeNetDevice 的
 #include "ns3/bridge-module.h"
 
+// 定制的Controller
+#include "qos-controller.h"
+
 //包含 `gnuplot`和`Gnuplot2Ddatabase`
 #include "ns3/stats-module.h"
 #include "ns3/random-variable-stream.h"
@@ -394,9 +397,11 @@ main (int argc, char *argv[])
   这里设置为1500，表示1500字节以上的frame要进行RTS/CTS机制
   */
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold",UintegerValue (rtslimit));
-  /* 设置最大WIFI覆盖距离为5m, 超出这个距离之后将无法传输WIFI信号 */
-  //Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (5));
-  
+  /* 
+  x^2 = 20^2 + 50^ => 50 < x < 60
+  设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
+  */
+  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (35));
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
 
@@ -439,6 +444,7 @@ main (int argc, char *argv[])
   //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
+  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel"); // 无线传输距离限制在35m
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
   wifiPhy.SetChannel (wifiChannel.Create());
@@ -655,10 +661,20 @@ main (int argc, char *argv[])
   of13Helper->SetChannelType (OFSwitch13Helper::DEDICATEDCSMA);
 
 
+  // LearningController   //// 这样在STA从AP1切换到AP2的时候controller会报错 "Inconsistent L2 switching table"
   Ptr<OFSwitch13Controller>         of13ControllerApp;
   Ptr<OFSwitch13LearningController> learningCtrl;
-  of13ControllerApp = of13Helper->InstallDefaultController (of13ControllerNode);
+  // InstallDefaultController() 其实是安装的 ns3::OFSwitch13LearningController
+  of13ControllerApp = of13Helper->InstallDefaultController (of13ControllerNode); // 接收一个参数
   learningCtrl = DynamicCast<OFSwitch13LearningController> (of13ControllerApp); //转型
+
+  /*
+  // General Controller   //// 这样并没有什么用
+  Ptr<OFSwitch13Controller>  of13ControllerApp = CreateObject<OFSwitch13Controller> ();
+  // InstallControllerApp() 是安装的普通的controller
+  of13ControllerApp = of13Helper->InstallControllerApp (of13ControllerNode, of13ControllerApp); //接收两个参数
+  */
+
   OFSwitch13DeviceContainer of13SwitchDevices[nSwitch];
   // 第i个of13SwitchDevices是通过在第i个of13SwitchesNode上安装第i个of13SwitchPorts得到的
   for (size_t i = 0; i < nSwitch; i++)
