@@ -81,13 +81,16 @@ uint32_t nMaxBytes = 0;
 // 1500字节以下的帧不需要RTS/CTS
 uint32_t rtslimit = 1500;
 
+//
+uint32_t MaxRange = 35;
+
 /* 恒定速度移动节点的
 初始位置 x = 0.0, y = 25.0
 和
 移动速度 x = 1.0,  y=  0.0
 */
 Vector3D mPosition = Vector3D(0.0, 40.0, 0.0);
-Vector3D mVelocity = Vector3D(10.0, 0.0 , 0.0);
+Vector3D mVelocity = Vector3D(10.0, 0.0 , 0.0);  //将速度改小并没有用，该不能握手还是不能握手
 
 
 bool
@@ -120,7 +123,8 @@ CommandSetup (int argc, char **argv)
 
 
   cmd.AddValue ("rtslimit", "The size of packets under which there should be RST/CST", rtslimit);
-  
+  cmd.AddValue ("MaxRange", "The max range within which the STA could receive signal", MaxRange);
+
   cmd.Parse (argc, argv);
   return true;
 }
@@ -401,7 +405,7 @@ main (int argc, char *argv[])
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
   */
-  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (35));
+  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));// default 35
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
 
@@ -564,7 +568,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (true));//根据Odin改成Active Probing了
+                   "ActiveProbing", BooleanValue (false));//
   stasWifiDevices[0] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[0] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
@@ -575,7 +579,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (true));//根据Odin改成Active Probing了
+                   "ActiveProbing", BooleanValue (false));//
   stasWifiDevices[1] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[1] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
@@ -586,7 +590,7 @@ main (int argc, char *argv[])
 
   wifiMac.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (true));//根据Odin改成Active Probing了
+                   "ActiveProbing", BooleanValue (false));//false反而更快
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
@@ -660,20 +664,21 @@ main (int argc, char *argv[])
   Ptr<OFSwitch13Helper> of13Helper = CreateObject<OFSwitch13Helper> ();
   of13Helper->SetChannelType (OFSwitch13Helper::DEDICATEDCSMA);
 
-
+  /*
   // LearningController   //// 这样在STA从AP1切换到AP2的时候controller会报错 "Inconsistent L2 switching table"
   Ptr<OFSwitch13Controller>         of13ControllerApp;
   Ptr<OFSwitch13LearningController> learningCtrl;
   // InstallDefaultController() 其实是安装的 ns3::OFSwitch13LearningController
   of13ControllerApp = of13Helper->InstallDefaultController (of13ControllerNode); // 接收一个参数
   learningCtrl = DynamicCast<OFSwitch13LearningController> (of13ControllerApp); //转型
-
-  /*
-  // General Controller   //// 这样并没有什么用
-  Ptr<OFSwitch13Controller>  of13ControllerApp = CreateObject<OFSwitch13Controller> ();
-  // InstallControllerApp() 是安装的普通的controller
-  of13ControllerApp = of13Helper->InstallControllerApp (of13ControllerNode, of13ControllerApp); //接收两个参数
   */
+
+  
+  // test Qos Controller
+  Ptr<QosController>  of13ControllerApp = CreateObject<QosController> ();
+  // InstallControllerApp() 是安装的普通的controller
+  of13Helper->InstallControllerApp (of13ControllerNode, of13ControllerApp); //接收两个参数
+  
 
   OFSwitch13DeviceContainer of13SwitchDevices[nSwitch];
   // 第i个of13SwitchDevices是通过在第i个of13SwitchesNode上安装第i个of13SwitchPorts得到的
