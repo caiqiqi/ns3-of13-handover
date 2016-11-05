@@ -32,13 +32,14 @@
 #include "ns3/bridge-module.h"
 
 // 定制的Controller
-#include "qos-controller.h"
+//#include "qos-controller.h"
 
 //包含 `gnuplot`和`Gnuplot2Ddatabase`
 #include "ns3/stats-module.h"
 #include "ns3/random-variable-stream.h"
-
 #include "ns3/netanim-module.h"
+
+#include "my-learning-controller.h"
 
 #include <iostream>
 #include <fstream>
@@ -53,7 +54,6 @@ using namespace ns3;
 
 
 bool tracing  = true;
-ns3::Time timeout = ns3::Seconds (0);
 
 
 double stopTime = 40.0;  // when the simulation stops
@@ -81,8 +81,7 @@ uint32_t nMaxBytes = 0;
 // 1500字节以下的帧不需要RTS/CTS
 uint32_t rtslimit = 1500;
 
-//
-uint32_t MaxRange = 35;
+uint32_t MaxRange = 50;
 
 /* 恒定速度移动节点的
 初始位置 x = 0.0, y = 25.0
@@ -94,24 +93,10 @@ Vector3D mVelocity = Vector3D(10.0, 0.0 , 0.0);  //将速度改小并没有用�
 
 
 bool
-SetTimeout (std::string value)
-{
-  try {
-      timeout = ns3::Seconds (atof (value.c_str ()));
-      return true;
-    }
-  catch (...) { return false; }
-  return false;
-}
-
-
-bool
 CommandSetup (int argc, char **argv)
 {
 
   CommandLine cmd;
-  //cmd.AddValue ("t", "Learning Controller Timeout (has no effect if drop controller is specified).", MakeCallback ( &SetTimeout));
-  //cmd.AddValue ("timeout", "Learning Controller Timeout (has no effect if drop controller is specified).", MakeCallback ( &SetTimeout));
 
   cmd.AddValue ("SamplingPeriod", "Sampling period", nSamplingPeriod);
   cmd.AddValue ("stopTime", "The time to stop", stopTime);
@@ -405,7 +390,7 @@ main (int argc, char *argv[])
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
   */
-  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));// default 35
+  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
 
@@ -448,7 +433,7 @@ main (int argc, char *argv[])
   //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
-  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel"); // 无线传输距离限制在35m
+  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
   wifiPhy.SetChannel (wifiChannel.Create());
@@ -675,10 +660,11 @@ main (int argc, char *argv[])
 
   
   // test Qos Controller
-  Ptr<QosController>  of13ControllerApp = CreateObject<QosController> ();
+  Ptr<MyLearningController>  of13ControllerApp = CreateObject<MyLearningController> ();
   // InstallControllerApp() 是安装的普通的controller
   of13Helper->InstallControllerApp (of13ControllerNode, of13ControllerApp); //接收两个参数
   
+
 
   OFSwitch13DeviceContainer of13SwitchDevices[nSwitch];
   // 第i个of13SwitchDevices是通过在第i个of13SwitchesNode上安装第i个of13SwitchPorts得到的
@@ -687,7 +673,6 @@ main (int argc, char *argv[])
     of13SwitchDevices[i] = 
         of13Helper->InstallSwitch (of13SwitchesNode.Get(i), of13SwitchPorts[i]);
   }
-  
 
 
   NS_LOG_UNCOND ("----------Installing Internet stack----------");

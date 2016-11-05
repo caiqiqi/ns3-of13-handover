@@ -88,7 +88,8 @@ QosController::HandlePacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_
   char *m = ofl_structs_match_to_string ((struct ofl_match_header*)msg->match, 0);
   NS_LOG_DEBUG ("Packet in match: " << m);
   free (m);
-
+// OFPR_ACTION 用来指定匹配的flow entry总是应该转发到controller
+// "particular matching flow entry should always be forwarded to the controller"
   if (msg->reason == OFPR_ACTION)
     {
       // Get Ethernet frame type
@@ -96,12 +97,12 @@ QosController::HandlePacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_
       ofl_match_tlv *tlv = oxm_match_lookup (OXM_OF_ETH_TYPE, (ofl_match*)msg->match);
       memcpy (&ethType, tlv->value, OXM_LENGTH (OXM_OF_ETH_TYPE));
 
-      if (ethType == ArpL3Protocol::PROT_NUMBER)    // ARP protocol number:0x0806
+      if (ethType == ArpL3Protocol::PROT_NUMBER)    // 如果是ARP protocol number:0x0806
         {
           // ARP packet
           return HandleArpPacketIn (msg, swtch, xid);
         }
-      else if (ethType == Ipv4L3Protocol::PROT_NUMBER)  // IP protocol number:0x0800
+      else if (ethType == Ipv4L3Protocol::PROT_NUMBER)  // 如果IP protocol number:0x0800
         {
           // TCP packet (from incoming connection)
           return HandleConnectionRequest (msg, swtch, xid);

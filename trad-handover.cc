@@ -73,6 +73,8 @@ uint32_t nMaxBytes = 0;
 // 1500字节以下的帧不需要RTS/CTS
 uint32_t rtslimit = 1500;
 
+uint32_t MaxRange = 50;
+
 /* 恒定速度移动节点的
 初始位置 x = 0.0, y = 25.0
 和
@@ -87,8 +89,6 @@ CommandSetup (int argc, char **argv)
 {
 
   CommandLine cmd;
-  //cmd.AddValue ("t", "Learning Controller Timeout (has no effect if drop controller is specified).", MakeCallback ( &SetTimeout));
-  //cmd.AddValue ("timeout", "Learning Controller Timeout (has no effect if drop controller is specified).", MakeCallback ( &SetTimeout));
 
   cmd.AddValue ("SamplingPeriod", "Sampling period", nSamplingPeriod);
   cmd.AddValue ("stopTime", "The time to stop", stopTime);
@@ -100,7 +100,8 @@ CommandSetup (int argc, char **argv)
 
 
   cmd.AddValue ("rtslimit", "The size of packets under which there should be RST/CST", rtslimit);
-
+  cmd.AddValue ("MaxRange", "The max range within which the STA could receive signal", MaxRange);
+  
   cmd.Parse (argc, argv);
   return true;
 }
@@ -332,7 +333,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor){
             std::cout<< "LostPackets: " << LostPacketsum << std::endl;
             std::cout<< "Jitter: " << JitterSum/ (RxPacketsum - 1) << std::endl;
             std::cout << "Dropped Packets: " << DropPacketsum << std::endl;
-            std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100/ TxPacketsum) << "%" << std::endl;
+            std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
             std::cout<<"------------------------------------------" << std::endl;
 
           }
@@ -379,7 +380,7 @@ main (int argc, char *argv[])
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
   */
-  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (35));
+  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));
   
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
@@ -391,8 +392,8 @@ main (int argc, char *argv[])
 
   /*----- init Helpers ----- */
   CsmaHelper csma;
-  csma.SetChannelAttribute ("DataRate", DataRateValue (5000000));   // 5M bandwidth
-  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));   // 2ms delay
+  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
+  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
   
   /* 调用YansWifiChannelHelper::Default() 已经添加了默认的传播损耗模型, 下面不要再手动添加 */
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
@@ -417,7 +418,7 @@ main (int argc, char *argv[])
   //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
-  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel"); // 无线传输距离限制在35m
+  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
   wifiPhy.SetChannel (wifiChannel.Create());
