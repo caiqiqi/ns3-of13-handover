@@ -148,7 +148,7 @@ MyLearningController::HandlePacketIn (ofl_msg_packet_in *msg,
                   // configure the flow entry to 10s idle timeout and to
                   // notify the controller when flow expires. (flags=0x0001)
                   std::ostringstream cmd;
-                  cmd << "flow-mod cmd=add,table=0,idle=20,flags=0x0001"
+                  cmd << "flow-mod cmd=add,table=0,idle=2,flags=0x0001"
                       << ",prio=" << ++prio << " eth_dst=" << src48
                       << " apply:output=" << inPort;
                   DpctlCommand (swtch, cmd.str ());

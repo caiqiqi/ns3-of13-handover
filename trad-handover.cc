@@ -806,6 +806,7 @@ main (int argc, char *argv[])
   gnuplot.SetTitle (plotTitle);
   gnuplot.SetTerminal ("png");
   gnuplot.SetLegend ("Time", "Throughput");
+  gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset;
   dataset.SetTitle (dataTitle);
   dataset.SetStyle (Gnuplot2dDataset::POINTS);
@@ -820,6 +821,7 @@ main (int argc, char *argv[])
   gnuplot1.SetTitle (plotTitle1);
   gnuplot1.SetTerminal ("png");
   gnuplot1.SetLegend ("Time", "Delay");
+  gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset1;
   dataset1.SetTitle (dataTitle1);
   dataset1.SetStyle (Gnuplot2dDataset::POINTS);
@@ -834,6 +836,7 @@ main (int argc, char *argv[])
   gnuplot2.SetTitle (plotTitle2);
   gnuplot2.SetTerminal ("png");
   gnuplot2.SetLegend ("Time", "LostPackets");
+  gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset2;
   dataset2.SetTitle (dataTitle2);
   dataset2.SetStyle (Gnuplot2dDataset::POINTS);
@@ -848,6 +851,7 @@ main (int argc, char *argv[])
   gnuplot3.SetTitle (plotTitle3);
   gnuplot3.SetTerminal ("png");
   gnuplot3.SetLegend ("Time", "Jitter");
+  gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset3;
   dataset3.SetTitle (dataTitle3);
   dataset3.SetStyle (Gnuplot2dDataset::POINTS);
