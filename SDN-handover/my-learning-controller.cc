@@ -151,6 +151,7 @@ MyLearningController::HandlePacketIn (ofl_msg_packet_in *msg,
                   cmd << "flow-mod cmd=add,table=0,idle=2,flags=0x0001"
                       << ",prio=" << ++prio << " eth_dst=" << src48
                       << " apply:output=" << inPort;
+                  // 表示从哪里进的到时候就从哪里出来
                   DpctlCommand (swtch, cmd.str ());
                 }
             }
