@@ -54,7 +54,7 @@ uint32_t nAp         = 3;
 uint32_t nSwitch     = 2;
 uint32_t nHost       = 2;
 uint32_t nAp1Station = 3;
-uint32_t nAp2Station = 25;   //使AP2过载
+uint32_t nAp2Station = 20;   //使AP2过载
 uint32_t nAp3Station = 1;
 
 
@@ -341,11 +341,11 @@ main (int argc, char *argv[])
   /* for staWifi--2--Nodes */
   MobilityHelper mobility2;
   mobility2.SetPositionAllocator ("ns3::GridPositionAllocator",
-    "MinX",      DoubleValue (200),
-    "MinY",      DoubleValue (60),
-    "DeltaX",    DoubleValue (5),  // x轴方向间隔5m, 一排共5个节点
-    "DeltaY",    DoubleValue (5),  // y轴方向间隔5m, 共5排
-    "GridWidth", UintegerValue(2),
+    "MinX",      DoubleValue (190), // 指这一组节点的起始节点的x轴坐标
+    "MinY",      DoubleValue (25),  // 指这一组节点的起始节点的y轴坐标
+    "DeltaX",    DoubleValue (5),  // x轴方向间隔5m
+    "DeltaY",    DoubleValue (5),  // y轴方向间隔5m
+    "GridWidth", UintegerValue(5), // 指网格的宽度为5个节点
     "LayoutType",StringValue ("RowFirst")
     );    // "GridWidth", UintegerValue(3),
   mobility2.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", 
@@ -520,7 +520,7 @@ main (int argc, char *argv[])
       wifiPhy.EnablePcap ("trad-handover/trad-handover-ap2-wifi", apWifiDevices[1]);
       //wifiPhy.EnablePcap ("trad-handover/trad-handover-ap2-sta1-wifi", stasWifiDevices[1]);
       wifiPhy.EnablePcap ("trad-handover/trad-handover-ap3-wifi", apWifiDevices[2]);
-      wifiPhy.EnablePcap ("trad-handover/trad-handover-ap3-sta1-wifi", stasWifiDevices[2]);
+      wifiPhy.EnablePcap ("trad-handover/trad-handover-sta-wifi", stasWifiDevices[2].Get(0));  //只有一个
       // WifiMacHelper doesnot have `EnablePcap()` method
       //csma.EnablePcap ("trad-handover/trad-switch1-csma", switchDevices[0]);
       //csma.EnablePcap ("trad-handover/trad-switch2-csma", switchDevices[1]);
