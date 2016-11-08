@@ -54,7 +54,7 @@ uint32_t nAp         = 3;
 uint32_t nSwitch     = 2;
 uint32_t nHost       = 2;
 uint32_t nAp1Station = 3;
-uint32_t nAp2Station = 4;
+uint32_t nAp2Station = 25;   //使AP2过载
 uint32_t nAp3Station = 1;
 
 
@@ -76,9 +76,9 @@ uint32_t rtslimit = 1500;
 uint32_t MaxRange = 50;
 
 /* 恒定速度移动节点的
-初始位置 x = 0.0, y = 25.0
+初始位置 x = 0.0, y = 40.0
 和
-移动速度 x = 1.0,  y=  0.0
+移动速度 x = 10.0,  y=  0.0
 */
 Vector3D mPosition = Vector3D(0.0, 40.0, 0.0);
 Vector3D mVelocity = Vector3D(10.0, 0.0 , 0.0);
@@ -141,7 +141,7 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
     /* 每个flow是根据包的五元组(协议，源IP/端口，目的IP/端口)来区分的 */
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
-    if (t.sourceAddress==Ipv4Address("10.0.0.10") && t.destinationAddress == Ipv4Address("10.0.0.2"))
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -184,7 +184,7 @@ LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 
     LostPacketsum += i->second.lostPackets;
 
-    if (t.sourceAddress==Ipv4Address("10.0.0.10") && t.destinationAddress == Ipv4Address("10.0.0.2"))
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -223,7 +223,7 @@ DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
       
       RxPacketsum  += i->second.rxPackets;
       Delaysum     += i->second.delaySum.GetSeconds();
-      if (t.sourceAddress==Ipv4Address("10.0.0.10") && t.destinationAddress == Ipv4Address("10.0.0.2"))
+      if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
         {
           // UDP_PROT_NUMBER = 17
           // TCP_PORT_NUMBER = 6
@@ -267,7 +267,7 @@ JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
     RxPacketsum   += i->second.rxPackets;
     JitterSum     += i->second.jitterSum.GetSeconds();
 
-    if (t.sourceAddress==Ipv4Address("10.0.0.10") && t.destinationAddress == Ipv4Address("10.0.0.2"))
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -289,7 +289,8 @@ JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 }
 
 
-void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor){
+void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
+{
   double tempThroughput = 0.0;
   uint32_t TxPacketsum = 0;
   uint32_t RxPacketsum = 0;
@@ -318,7 +319,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor){
       (i->second.timeLastRxPacket.GetSeconds() - 
         i->second.timeFirstTxPacket.GetSeconds())/1024);
 
-    if (t.sourceAddress==Ipv4Address("10.0.0.10") && t.destinationAddress == Ipv4Address("10.0.0.2"))
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -345,6 +346,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor){
     }
   // 每隔一秒打印一次
   Simulator::Schedule(Seconds(1), &PrintParams, fmhelper, monitor);
+
 }
 
 
@@ -586,13 +588,13 @@ main (int argc, char *argv[])
   mobility2.SetPositionAllocator ("ns3::GridPositionAllocator",
     "MinX",      DoubleValue (200),
     "MinY",      DoubleValue (60),
-    "DeltaX",    DoubleValue (20),
-    "DeltaY",    DoubleValue (20),
+    "DeltaX",    DoubleValue (5),  // x轴方向间隔5m, 一排共5个节点
+    "DeltaY",    DoubleValue (5),  // y轴方向间隔5m, 共5排
     "GridWidth", UintegerValue(2),
     "LayoutType",StringValue ("RowFirst")
     );    // "GridWidth", UintegerValue(3),
   mobility2.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", 
-    "Bounds", RectangleValue (Rectangle (150, 250, 40, 120)));
+    "Bounds", RectangleValue (Rectangle (190, 210, 25, 45))); // 活动范围矩形框
   mobility2.Install (staWifiNodes[1]);
   
   /* for sta-1-Wifi-3-Node 要让Wifi3网络中的Sta1以恒定速度移动  */
@@ -663,8 +665,8 @@ main (int argc, char *argv[])
 
   // 供三组STA
   stasWifi1Interface = ip.Assign (stasWifiDevices[0]); // 10.0.0.0.3~5
-  stasWifi2Interface = ip.Assign (stasWifiDevices[1]); // 10.0.0.0.6~9
-  stasWifi3Interface = ip.Assign (stasWifiDevices[2]); // 10.0.0.0.10
+  stasWifi2Interface = ip.Assign (stasWifiDevices[1]); 
+  stasWifi3Interface = ip.Assign (stasWifiDevices[2]); 
 
 
 
