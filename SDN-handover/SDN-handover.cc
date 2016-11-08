@@ -39,6 +39,9 @@
 #include "ns3/random-variable-stream.h"
 #include "ns3/netanim-module.h"
 
+#include "ns3/ipv4-click-routing.h"
+//#include "ns3/click-internet-stack-helper.h"
+
 #include "my-learning-controller.h"
 
 #include <iostream>
@@ -49,7 +52,7 @@
 
 using namespace ns3;
 
-//NS_LOG_COMPONENT_DEFINE ("SDNHandoverScript");
+NS_LOG_COMPONENT_DEFINE ("SDNHandoverScript");
 
 
 
@@ -354,6 +357,20 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor){
   Simulator::Schedule(Seconds(1), &PrintParams, fmhelper, monitor);
 }
 
+void
+ReadArp (Ptr<Ipv4ClickRouting> clickRouter)
+{
+  // Access the handlers
+  NS_LOG_INFO (clickRouter->ReadHandler ("wifi/arpquerier", "table"));
+  NS_LOG_INFO (clickRouter->ReadHandler ("wifi/arpquerier", "stats"));
+}
+
+void
+WriteArp (Ptr<Ipv4ClickRouting> clickRouter)
+{
+  // Access the handler
+  NS_LOG_INFO (clickRouter->WriteHandler ("wifi/arpquerier", "insert", "172.16.1.2 00:00:00:00:00:02"));
+}
 
 
 int
@@ -399,7 +416,7 @@ main (int argc, char *argv[])
   
   ns3::PacketMetadata::Enable ();
   
-  //LogComponentEnable ("SDNHandoverScript", LOG_LEVEL_INFO);
+  LogComponentEnable ("SDNHandoverScript", LOG_LEVEL_INFO);
 
   /*----- init Helpers ----- */
   CsmaHelper  csma;
@@ -675,22 +692,41 @@ main (int argc, char *argv[])
   }
 
 
+  /*
+  //
+  // Install Click on the nodes
+  //
+  ClickInternetStackHelper clickinternet;
+  // APs are to run in promiscuous mode. This can be verified
+  // from the pcap trace xxx.pcap generated after running
+  // this script.
+  clickinternet.SetClickFile (apsNode.Get (0), "src/click/examples/nsclick-wifi-single-interface-promisc.click");
+  clickinternet.SetClickFile (apsNode.Get (1), "src/click/examples/nsclick-wifi-single-interface-promisc.click");
+  clickinternet.SetClickFile (apsNode.Get (2), "src/click/examples/nsclick-wifi-single-interface-promisc.click");
+
+  clickinternet.SetRoutingTableElement (apsNode, "rt");
+
+  clickinternet.Install (apsNode);
+  */
+
   NS_LOG_UNCOND ("----------Installing Internet stack----------");
 
-  /* Add internet stack to all the nodes, expect switches(交换机不用) */
   InternetStackHelper internet;
 
-  internet.Install (apsNode);
+  //internet.Install (apsNode);
   internet.Install (hostsNode);
   //internet.Install (of13SwitchesNode); 
   // (v3.25)给交换机装上Internet之后，交换机就有了回环网卡
   // (v3.24)不能给交换机装Internet，会报错
+  
   internet.Install (staWifiNodes[0]);
   internet.Install (staWifiNodes[1]);
   internet.Install (staWifiNodes[2]);
-
+  
   
   NS_LOG_UNCOND ("-----------Assigning IP Addresses.-----------");
+
+
 
   Ipv4AddressHelper ip;
   ip.SetBase ("10.0.0.0",    "255.255.255.0");
@@ -929,6 +965,10 @@ main (int argc, char *argv[])
   PrintParams       (&flowmon, monitor);
 /*-----------------------------------------------------*/
 
+// 手动指定AP的IP
+  //Simulator::Schedule (Seconds (0.3), &ReadArp, n.Get (2)->GetObject<Ipv4ClickRouting> ());
+  //Simulator::Schedule (Seconds (0.4), &WriteArp, n.Get (2)->GetObject<Ipv4ClickRouting> ());
+  //Simulator::Schedule (Seconds (0.5), &ReadArp, n.Get (2)->GetObject<Ipv4ClickRouting> ());
 
   NS_LOG_UNCOND ("------------Running Simulation.------------");
   Simulator::Run ();
