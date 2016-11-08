@@ -84,270 +84,25 @@ Vector3D mPosition = Vector3D(0.0, 40.0, 0.0);
 Vector3D mVelocity = Vector3D(10.0, 0.0 , 0.0);
 
 
-bool
-CommandSetup (int argc, char **argv)
-{
-
-  CommandLine cmd;
-
-  cmd.AddValue ("SamplingPeriod", "Sampling period", nSamplingPeriod);
-  cmd.AddValue ("stopTime", "The time to stop", stopTime);
-  
-  /* for udp-server-client application */
-  // cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
-  // cmd.AddValue ("Interval", "The interval between two packet sent", nInterval);
-  // cmd.AddValue ("PacketSize", "The size in byte of each packet", nPacketSize);
-
-
-  cmd.AddValue ("rtslimit", "The size of packets under which there should be RST/CST", rtslimit);
-  cmd.AddValue ("MaxRange", "The max range within which the STA could receive signal", MaxRange);
-  
-  cmd.Parse (argc, argv);
-  return true;
-}
+Ipv4Address serverIp;   // UDP/TCP的server IP
+Ipv4Address clientIp;   // UDP/TCP的client IP
 
 
 
+////////////////////// 函数声明 ///////////////////
+bool CommandSetup(int argc, char **argv);
 
-/*
- * Calculate Throughput using Flowmonitor
- * 每个探针(probe)会根据四点来对包进行分类
- * -- when packet is `sent`;
- * -- when packet is `forwarded`;
- * -- when packet is `received`;
- * -- when packet is `dropped`;
- * 由于包是在IP层进行track的，所以任何的四层(TCP)重传的包，都会被认为是一个新的包
- */
-void
-ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
-  Gnuplot2dDataset dataset)
-{
-  
-  double throu   = 0.0;
-  monitor->CheckForLostPackets ();
-  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
-  /* since fmhelper is a pointer, we should use it as a pointer.
-   * `fmhelper->GetClassifier ()` instead of `fmhelper.GetClassifier ()`
-   */
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
-    {
-    /* 
-     * `Ipv4FlowClassifier`
-     * Classifies packets by looking at their IP and TCP/UDP headers. 
-     * FiveTuple五元组是：(source-ip, destination-ip, protocol, source-port, destination-port)
-    */
+void ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset);
+void LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset2);
+void DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset1);
+void JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset3);
+void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor);
+////////////////////// 函数声明 ///////////////////
 
-    /* 每个flow是根据包的五元组(协议，源IP/端口，目的IP/端口)来区分的 */
-    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
-      {
-        // UDP_PROT_NUMBER = 17
-        // TCP_PORT_NUMBER = 6
-          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
-          {
-            throu   = i->second.rxBytes * 8.0 / 
-              (i->second.timeLastRxPacket.GetSeconds() - 
-                i->second.timeFirstTxPacket.GetSeconds())/1024 ;
-            dataset.Add  (Simulator::Now().GetSeconds(), throu);
-          }
-          else
-          {
-            std::cout << "This is not UDP/TCP traffic" << std::endl;
-          }
-      }
-
-    }
-  /* check throughput every nSamplingPeriod second(每隔nSamplingPeriod调用依次Simulation)
-   * 表示每隔nSamplingPeriod时间
-   */
-  Simulator::Schedule (Seconds(nSamplingPeriod), &ThroughputMonitor, fmhelper, monitor, 
-    dataset);
-
-}
-
-void
-LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
-  Gnuplot2dDataset dataset2)
-{
-  
-  uint32_t LostPacketsum = 0;
-
-  monitor->CheckForLostPackets ();
-  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
-    {
-
-    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-
-    LostPacketsum += i->second.lostPackets;
-
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
-      {
-        // UDP_PROT_NUMBER = 17
-        // TCP_PORT_NUMBER = 6
-          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
-          {
-            dataset2.Add (Simulator::Now().GetSeconds(), LostPacketsum);
-          }
-          else
-          {
-            std::cout << "This is not UDP/TCP traffic" << std::endl;
-          }
-      }
-
-    }
-  Simulator::Schedule (Seconds(nSamplingPeriod), &LostPacketsMonitor, fmhelper, monitor, 
-    dataset2);
-
-}
-
-void
-DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
-  Gnuplot2dDataset dataset1)
-{
-  
-  uint32_t RxPacketsum = 0;
-  double Delaysum  = 0;
-  double delay     = 0;
-
-  monitor->CheckForLostPackets ();
-  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
-    {
-
-      Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-      
-      RxPacketsum  += i->second.rxPackets;
-      Delaysum     += i->second.delaySum.GetSeconds();
-      if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
-        {
-          // UDP_PROT_NUMBER = 17
-          // TCP_PORT_NUMBER = 6
-            if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
-            {
-              delay = Delaysum/ RxPacketsum;
-              dataset1.Add (Simulator::Now().GetSeconds(), delay);
-            }
-            else
-            {
-              std::cout << "This is not UDP/TCP traffic" << std::endl;
-            }
-        }
-
-    }
-  Simulator::Schedule (Seconds(nSamplingPeriod), &DelayMonitor, fmhelper, monitor, 
-    dataset1);
-
-}
-
-
-
-
-void
-JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
-  Gnuplot2dDataset dataset3)
-{
-  
-  uint32_t RxPacketsum = 0;
-  double JitterSum = 0;
-  double jitter    = 0;
-
-  monitor->CheckForLostPackets ();
-  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
-    {
-
-    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-
-    RxPacketsum   += i->second.rxPackets;
-    JitterSum     += i->second.jitterSum.GetSeconds();
-
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
-      {
-        // UDP_PROT_NUMBER = 17
-        // TCP_PORT_NUMBER = 6
-          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
-          {
-            jitter  = RxPacketsum/ (JitterSum -1);
-            dataset3.Add (Simulator::Now().GetSeconds(), jitter);
-          }
-          else
-          {
-            std::cout << "This is not UDP/TCP traffic" << std::endl;
-          }
-      }
-
-    }
-  Simulator::Schedule (Seconds(nSamplingPeriod), &JitterMonitor, fmhelper, monitor, 
-    dataset3);
-
-}
-
-
-void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
-{
-  double tempThroughput = 0.0;
-  uint32_t TxPacketsum = 0;
-  uint32_t RxPacketsum = 0;
-  uint32_t DropPacketsum = 0;
-  uint32_t LostPacketsum = 0;
-  double Delaysum  = 0;
-  double JitterSum = 0;
-
-  monitor->CheckForLostPackets(); 
-  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats();
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier());
-
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); i++){ 
-      // A tuple: Source-ip, destination-ip, protocol, source-port, destination-port
-    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-                    
-
-    TxPacketsum   += i->second.txPackets;
-    RxPacketsum   += i->second.rxPackets;
-    LostPacketsum += i->second.lostPackets;
-    DropPacketsum += i->second.packetsDropped.size();
-    Delaysum      += i->second.delaySum.GetSeconds();
-    JitterSum     += i->second.jitterSum.GetSeconds();
-    
-    tempThroughput = (i->second.rxBytes * 8.0 / 
-      (i->second.timeLastRxPacket.GetSeconds() - 
-        i->second.timeFirstTxPacket.GetSeconds())/1024);
-
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
-      {
-        // UDP_PROT_NUMBER = 17
-        // TCP_PORT_NUMBER = 6
-          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
-          {
-            std::cout<<"Time: " << Simulator::Now ().GetSeconds () << " s," << " Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << std::endl;
-
-            std::cout<< "Tx Packets = " << TxPacketsum << std::endl;
-            std::cout<< "Rx Packets = " << RxPacketsum << std::endl;
-            std::cout<< "Throughput: "<< tempThroughput <<" Kbps" << std::endl;
-            std::cout<< "Delay: " << Delaysum/ RxPacketsum << std::endl;
-            std::cout<< "LostPackets: " << LostPacketsum << std::endl;
-            std::cout<< "Jitter: " << JitterSum/ (RxPacketsum - 1) << std::endl;
-            std::cout << "Dropped Packets: " << DropPacketsum << std::endl;
-            std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
-            std::cout<<"------------------------------------------" << std::endl;
-
-          }
-          else
-          {
-            std::cout << "This is not UDP/TCP traffic" << std::endl;
-          }
-      }
-    }
-  // 每隔一秒打印一次
-  Simulator::Schedule(Seconds(1), &PrintParams, fmhelper, monitor);
-
-}
 
 
 /*
@@ -721,7 +476,9 @@ main (int argc, char *argv[])
   sourceApps.Stop (Seconds (stopTime));
   
 
-
+  // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
+  serverIp = h1h2Interface.GetAddress(1);
+  clientIp = stasWifi3Interface.GetAddress(0);
 
   // Create a source to send packets.  Instead of a full Application
   // and the helper APIs you might see in other example files, this example
@@ -860,11 +617,12 @@ main (int argc, char *argv[])
   //dataset3.SetErrorBars (Gnuplot2dDataset::XY);
 
 /*-----------------------------------------------------*/
-  // 测吞吐量, 延时, 丢包, 抖动, 最后打印出这些参数
+  // 测吞吐量, 延时, 丢包, 抖动
   ThroughputMonitor (&flowmon, monitor, dataset);
   DelayMonitor      (&flowmon, monitor, dataset1);
   LostPacketsMonitor(&flowmon, monitor, dataset2);
   JitterMonitor     (&flowmon, monitor, dataset3);
+  // 打印出各种参数
   PrintParams       (&flowmon, monitor);
 /*-----------------------------------------------------*/
 
@@ -900,4 +658,265 @@ main (int argc, char *argv[])
    * are used respectively to activate/deactivate the histograms and the per-probe detailed stats.
    */
   Simulator::Destroy ();
+}
+
+/////////////////////////////////////////////
+///////////////// 函数定义 ///////////////////
+bool
+CommandSetup (int argc, char **argv)
+{
+
+  CommandLine cmd;
+
+  cmd.AddValue ("SamplingPeriod", "Sampling period", nSamplingPeriod);
+  cmd.AddValue ("stopTime", "The time to stop", stopTime);
+  
+  /* for udp-server-client application */
+  // cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
+  // cmd.AddValue ("Interval", "The interval between two packet sent", nInterval);
+  // cmd.AddValue ("PacketSize", "The size in byte of each packet", nPacketSize);
+
+
+  cmd.AddValue ("rtslimit", "The size of packets under which there should be RST/CST", rtslimit);
+  cmd.AddValue ("MaxRange", "The max range within which the STA could receive signal", MaxRange);
+  
+  cmd.Parse (argc, argv);
+  return true;
+}
+
+
+/*
+ * Calculate Throughput using Flowmonitor
+ * 每个探针(probe)会根据四点来对包进行分类
+ * -- when packet is `sent`;
+ * -- when packet is `forwarded`;
+ * -- when packet is `received`;
+ * -- when packet is `dropped`;
+ * 由于包是在IP层进行track的，所以任何的四层(TCP)重传的包，都会被认为是一个新的包
+ */
+void
+ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset)
+{
+  
+  double throu   = 0.0;
+  monitor->CheckForLostPackets ();
+  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
+  /* since fmhelper is a pointer, we should use it as a pointer.
+   * `fmhelper->GetClassifier ()` instead of `fmhelper.GetClassifier ()`
+   */
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
+    {
+    /* 
+     * `Ipv4FlowClassifier`
+     * Classifies packets by looking at their IP and TCP/UDP headers. 
+     * FiveTuple五元组是：(source-ip, destination-ip, protocol, source-port, destination-port)
+    */
+
+    /* 每个flow是根据包的五元组(协议，源IP/端口，目的IP/端口)来区分的 */
+    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+      {
+        // UDP_PROT_NUMBER = 17
+        // TCP_PORT_NUMBER = 6
+          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
+          {
+            throu   = i->second.rxBytes * 8.0 / 
+              (i->second.timeLastRxPacket.GetSeconds() - 
+                i->second.timeFirstTxPacket.GetSeconds())/1024 ;
+            dataset.Add  (Simulator::Now().GetSeconds(), throu);
+          }
+          else
+          {
+            std::cout << "This is not UDP/TCP traffic" << std::endl;
+          }
+      }
+
+    }
+  /* check throughput every nSamplingPeriod second(每隔nSamplingPeriod调用依次Simulation)
+   * 表示每隔nSamplingPeriod时间
+   */
+  Simulator::Schedule (Seconds(nSamplingPeriod), &ThroughputMonitor, fmhelper, monitor, 
+    dataset);
+
+}
+void
+DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset1)
+{
+  
+  uint32_t RxPacketsum = 0;
+  double Delaysum  = 0;
+  double delay     = 0;
+
+  monitor->CheckForLostPackets ();
+  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
+    {
+
+      Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+      
+      RxPacketsum  += i->second.rxPackets;
+      Delaysum     += i->second.delaySum.GetSeconds();
+      if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+        {
+          // UDP_PROT_NUMBER = 17
+          // TCP_PORT_NUMBER = 6
+            if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
+            {
+              delay = Delaysum/ RxPacketsum;
+              dataset1.Add (Simulator::Now().GetSeconds(), delay);
+            }
+            else
+            {
+              std::cout << "This is not UDP/TCP traffic" << std::endl;
+            }
+        }
+
+    }
+  Simulator::Schedule (Seconds(nSamplingPeriod), &DelayMonitor, fmhelper, monitor, 
+    dataset1);
+
+}
+
+void
+LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset2)
+{
+  
+  uint32_t LostPacketsum = 0;
+
+  monitor->CheckForLostPackets ();
+  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
+    {
+
+    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+
+    LostPacketsum += i->second.lostPackets;
+
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+      {
+        // UDP_PROT_NUMBER = 17
+        // TCP_PORT_NUMBER = 6
+          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
+          {
+            dataset2.Add (Simulator::Now().GetSeconds(), LostPacketsum);
+          }
+          else
+          {
+            std::cout << "This is not UDP/TCP traffic" << std::endl;
+          }
+      }
+
+    }
+  Simulator::Schedule (Seconds(nSamplingPeriod), &LostPacketsMonitor, fmhelper, monitor, 
+    dataset2);
+
+}
+
+
+void
+JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
+  Gnuplot2dDataset dataset3)
+{
+  
+  uint32_t RxPacketsum = 0;
+  double JitterSum = 0;
+  double jitter    = 0;
+
+  monitor->CheckForLostPackets ();
+  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
+    {
+
+    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+
+    RxPacketsum   += i->second.rxPackets;
+    JitterSum     += i->second.jitterSum.GetSeconds();
+
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+      {
+        // UDP_PROT_NUMBER = 17
+        // TCP_PORT_NUMBER = 6
+          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
+          {
+            jitter  = RxPacketsum/ (JitterSum -1);
+            dataset3.Add (Simulator::Now().GetSeconds(), jitter);
+          }
+          else
+          {
+            std::cout << "This is not UDP/TCP traffic" << std::endl;
+          }
+      }
+
+    }
+  Simulator::Schedule (Seconds(nSamplingPeriod), &JitterMonitor, fmhelper, monitor, 
+    dataset3);
+
+}
+
+void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
+{
+  double tempThroughput = 0.0;
+  uint32_t TxPacketsum = 0;
+  uint32_t RxPacketsum = 0;
+  uint32_t DropPacketsum = 0;
+  uint32_t LostPacketsum = 0;
+  double Delaysum  = 0;
+  double JitterSum = 0;
+
+  monitor->CheckForLostPackets(); 
+  std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier());
+
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); i++){ 
+      // A tuple: Source-ip, destination-ip, protocol, source-port, destination-port
+    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+                    
+
+    TxPacketsum   += i->second.txPackets;
+    RxPacketsum   += i->second.rxPackets;
+    LostPacketsum += i->second.lostPackets;
+    DropPacketsum += i->second.packetsDropped.size();
+    Delaysum      += i->second.delaySum.GetSeconds();
+    JitterSum     += i->second.jitterSum.GetSeconds();
+    
+    tempThroughput = (i->second.rxBytes * 8.0 / 
+      (i->second.timeLastRxPacket.GetSeconds() - 
+        i->second.timeFirstTxPacket.GetSeconds())/1024);
+
+    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+      {
+        // UDP_PROT_NUMBER = 17
+        // TCP_PORT_NUMBER = 6
+          if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
+          {
+            std::cout<<"Time: " << Simulator::Now ().GetSeconds () << " s," << " Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << std::endl;
+
+            std::cout<< "Tx Packets = " << TxPacketsum << std::endl;
+            std::cout<< "Rx Packets = " << RxPacketsum << std::endl;
+            std::cout<< "Throughput: "<< tempThroughput <<" Kbps" << std::endl;
+            std::cout<< "Delay: " << Delaysum/ RxPacketsum << std::endl;
+            std::cout<< "LostPackets: " << LostPacketsum << std::endl;
+            std::cout<< "Jitter: " << JitterSum/ (RxPacketsum - 1) << std::endl;
+            std::cout << "Dropped Packets: " << DropPacketsum << std::endl;
+            std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
+            std::cout<<"------------------------------------------" << std::endl;
+
+          }
+          else
+          {
+            std::cout << "This is not UDP/TCP traffic" << std::endl;
+          }
+      }
+    }
+  // 每隔一秒打印一次
+  Simulator::Schedule(Seconds(1), &PrintParams, fmhelper, monitor);
+
 }
