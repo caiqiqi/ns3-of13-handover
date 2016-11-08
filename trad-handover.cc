@@ -717,7 +717,7 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
     /* 每个flow是根据包的五元组(协议，源IP/端口，目的IP/端口)来区分的 */
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+    if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -761,7 +761,7 @@ DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
       
       RxPacketsum  += i->second.rxPackets;
       Delaysum     += i->second.delaySum.GetSeconds();
-      if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+      if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
         {
           // UDP_PROT_NUMBER = 17
           // TCP_PORT_NUMBER = 6
@@ -799,7 +799,7 @@ LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 
     LostPacketsum += i->second.lostPackets;
 
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+    if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -840,7 +840,7 @@ JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
     RxPacketsum   += i->second.rxPackets;
     JitterSum     += i->second.jitterSum.GetSeconds();
 
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+    if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
@@ -891,7 +891,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
       (i->second.timeLastRxPacket.GetSeconds() - 
         i->second.timeFirstTxPacket.GetSeconds())/1024);
 
-    if (t.sourceAddress==stasWifi3Interface.GetAddress(0) && t.destinationAddress == h1h2Interface.GetAddress(1))
+    if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
         // UDP_PROT_NUMBER = 17
         // TCP_PORT_NUMBER = 6
