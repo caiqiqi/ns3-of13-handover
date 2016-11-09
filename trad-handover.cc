@@ -73,7 +73,7 @@ uint32_t nMaxBytes = 0;
 // 1500字节以下的帧不需要RTS/CTS
 uint32_t rtslimit = 1500;
 
-uint32_t MaxRange = 50;
+uint32_t MaxRange = 80;
 
 /* 恒定速度移动节点的
 初始位置 x = 0.0, y = 40.0
