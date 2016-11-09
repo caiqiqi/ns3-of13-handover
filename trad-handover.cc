@@ -476,6 +476,7 @@ main (int argc, char *argv[])
   sourceApps.Stop (Seconds (stopTime));
   
 
+  /*
   // 给20 个AP2 的stations 加上 BulkSender
   for (uint32_t i = 0; i < nAp2Station; i++)
   {
@@ -487,6 +488,8 @@ main (int argc, char *argv[])
     ap2sourceApps.Start (Seconds (1.0));
     ap2sourceApps.Stop (Seconds (stopTime));
   }
+  */
+
 
   // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
   serverIp = h1h2Interface.GetAddress(1);
