@@ -54,7 +54,7 @@ uint32_t nAp         = 3;
 uint32_t nSwitch     = 2;
 uint32_t nHost       = 2;
 uint32_t nAp1Station = 3;
-uint32_t nAp2Station = 20;   //使AP2过载
+uint32_t nAp2Station = 25;   //使AP2过载
 uint32_t nAp3Station = 1;
 
 
