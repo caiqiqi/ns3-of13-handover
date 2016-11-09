@@ -471,10 +471,22 @@ main (int argc, char *argv[])
                          InetSocketAddress (h1h2Interface.GetAddress(1), port));
   // Set the amount of data to send in bytes.  Zero is unlimited.
   source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-  ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));
+  ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
   sourceApps.Start (Seconds (1.0));
   sourceApps.Stop (Seconds (stopTime));
   
+
+  // 给20 个AP2 的stations 加上 BulkSender
+  for (uint32_t i = 0; i < nAp2Station; i++)
+  {
+    BulkSendHelper ap2Source ("ns3::TcpSocketFactory",
+                         InetSocketAddress (h1h2Interface.GetAddress(1), port));
+    // Set the amount of data to send in bytes.  Zero is unlimited.
+    ap2Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+    ApplicationContainer ap2sourceApps = ap2Source.Install (staWifiNodes[1].Get(i));  // AP2内的第 i 个STA
+    ap2sourceApps.Start (Seconds (1.0));
+    ap2sourceApps.Stop (Seconds (stopTime));
+  }
 
   // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
   serverIp = h1h2Interface.GetAddress(1);
