@@ -80,7 +80,7 @@ uint32_t MaxRange = 80;
 和
 移动速度 x = 10.0,  y=  0.0
 */
-Vector3D mPosition = Vector3D(400.0, 40.0, 0.0);
+Vector3D mPosition = Vector3D(350.0, 40.0, 0.0);
 Vector3D mVelocity = Vector3D(-10.0, 0.0 , 0.0);
 
 
