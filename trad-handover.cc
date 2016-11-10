@@ -83,10 +83,10 @@ uint32_t MaxRange = 80;
 Vector3D mPosition = Vector3D(350.0, 40.0, 0.0);
 Vector3D mVelocity = Vector3D(-10.0, 0.0 , 0.0);
 
-// 设置各个AP的传输信号强度(dBm为单位)
-double ap1TxPwr = 50;
-double ap2TxPwr = 80;  // 使AP2 的传输信号强度最大
-double ap3TxPwr = 50;
+// 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送
+double ap1TxPwr = 110;
+double ap2TxPwr = 150;  // 使AP2 的传输信号强度最大
+double ap3TxPwr = 110;
 
 
 
@@ -193,9 +193,15 @@ main (int argc, char *argv[])
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
   wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
-  YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
-  wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
-  wifiPhy.SetChannel (wifiChannel.Create());
+  // 一个给AP，一个给STA
+  YansWifiPhyHelper wifiPhyAP = YansWifiPhyHelper::Default();
+  YansWifiPhyHelper wifiPhySTA = YansWifiPhyHelper::Default();
+
+  wifiPhyAP.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
+  wifiPhyAP.SetChannel (wifiChannel.Create());
+  wifiPhySTA.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
+  wifiPhySTA.SetChannel (wifiChannel.Create());
+
   WifiHelper wifi;
   /* The SetRemoteStationManager method tells the helper the type of `rate control algorithm` to use. 
    * Here, it is asking the helper to use the AARF algorithm
@@ -205,7 +211,9 @@ main (int argc, char *argv[])
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ); // 貌似只能在ns-3.25支持
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
   //QosWifiMacHelper wifiMac;
-  NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
+  // 一个给AP，一个给STA
+  NqosWifiMacHelper wifiMacAP = NqosWifiMacHelper::Default ();
+  NqosWifiMacHelper wifiMacSTA = NqosWifiMacHelper::Default ();
 
  
   NS_LOG_UNCOND ("------------Creating Nodes------------");
@@ -304,49 +312,58 @@ main (int argc, char *argv[])
 
   NS_LOG_UNCOND ("----------Configuring WIFI networks----------");
   Ssid ssid = Ssid ("ssid-default");
-  Ssid ssid1 = Ssid ("ssid-1");
-  Ssid ssid2 = Ssid ("ssid-2");
-  Ssid ssid3 = Ssid ("ssid-3");
-  //----------------------- Network AP1--------------------
+  //Ssid ssid1 = Ssid ("ssid-1");
+  //Ssid ssid2 = Ssid ("ssid-2");
+  //Ssid ssid3 = Ssid ("ssid-3");
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (0 % 3) * 5));   // 1
-
-  wifiMac.SetType ("ns3::StaWifiMac", 
+  
+  // ------------------- 配置STA --------------------
+  wifiMacSTA.SetType ("ns3::StaWifiMac", 
                    "Ssid", SsidValue (ssid), 
                    "ActiveProbing", BooleanValue (false));//
-  stasWifiDevices[0] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[0] );
-  wifiMac.SetType ("ns3::ApWifiMac", 
+  stasWifiDevices[0] = wifi.Install(wifiPhySTA, wifiMacSTA, staWifiNodes[0] );
+
+  wifiMacSTA.SetType ("ns3::StaWifiMac", 
+                   "Ssid", SsidValue (ssid), 
+                   "ActiveProbing", BooleanValue (false));//
+  stasWifiDevices[1] = wifi.Install(wifiPhySTA, wifiMacSTA, staWifiNodes[1] );
+
+  wifiMacSTA.SetType ("ns3::StaWifiMac", 
+                   "Ssid", SsidValue (ssid), 
+                   "ActiveProbing", BooleanValue (false));//变成false似乎还快一些
+  stasWifiDevices[2] = wifi.Install(wifiPhySTA, wifiMacSTA, staWifiNodes[2] );
+  // ------------------- 配置STA --------------------
+
+  // ------------------- 配置AP --------------------
+  wifiMacAP.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
-  wifiPhy.Set("TxPowerStart", DoubleValue(ap1TxPwr));
-  wifiPhy.Set("TxPowerEnd",   DoubleValue(ap1TxPwr));
-  apWifiDevices[0]   = wifi.Install(wifiPhy, wifiMac, ap1WifiNode);
+  wifiPhyAP.Set("TxPowerStart", DoubleValue(ap1TxPwr));
+  wifiPhyAP.Set("TxPowerEnd",   DoubleValue(ap1TxPwr));
+  apWifiDevices[0]   = wifi.Install(wifiPhyAP, wifiMacAP, ap1WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (1 % 3) * 5));    // 6  
 
-  wifiMac.SetType ("ns3::StaWifiMac", 
-                   "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));//
-  stasWifiDevices[1] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[1] );
-  wifiMac.SetType ("ns3::ApWifiMac", 
+  wifiMacAP.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
-  wifiPhy.Set("TxPowerStart", DoubleValue(ap2TxPwr));
-  wifiPhy.Set("TxPowerEnd",   DoubleValue(ap2TxPwr));
+  wifiPhyAP.Set("TxPowerStart", DoubleValue(ap2TxPwr));
+  wifiPhyAP.Set("TxPowerEnd",   DoubleValue(ap2TxPwr));
 
-  apWifiDevices[1]   = wifi.Install(wifiPhy, wifiMac, ap2WifiNode);
+  apWifiDevices[1]   = wifi.Install(wifiPhyAP, wifiMacAP, ap2WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (2 % 3) * 5));    // 11
 
-  wifiMac.SetType ("ns3::StaWifiMac", 
-                   "Ssid", SsidValue (ssid), 
-                   "ActiveProbing", BooleanValue (false));//变成false似乎还快一些
-  stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
-  wifiMac.SetType ("ns3::ApWifiMac", 
+
+
+  wifiMacAP.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
-  wifiPhy.Set("TxPowerStart", DoubleValue(ap3TxPwr));
-  wifiPhy.Set("TxPowerEnd",   DoubleValue(ap3TxPwr));
-  apWifiDevices[2]   = wifi.Install(wifiPhy, wifiMac, ap3WifiNode);
+  wifiPhyAP.Set("TxPowerStart", DoubleValue(ap3TxPwr));
+  wifiPhyAP.Set("TxPowerEnd",   DoubleValue(ap3TxPwr));
+  apWifiDevices[2]   = wifi.Install(wifiPhyAP, wifiMacAP, ap3WifiNode);
+  // ------------------- 配置AP --------------------
+
 
   MobilityHelper mobility1;
   /* for staWifi--1--Nodes */
@@ -365,15 +382,15 @@ main (int argc, char *argv[])
   /* for staWifi--2--Nodes */
   MobilityHelper mobility2;
   mobility2.SetPositionAllocator ("ns3::GridPositionAllocator",
-    "MinX",      DoubleValue (190), // 指这一组节点的起始节点的x轴坐标
-    "MinY",      DoubleValue (25),  // 指这一组节点的起始节点的y轴坐标
-    "DeltaX",    DoubleValue (5),  // x轴方向间隔5m
-    "DeltaY",    DoubleValue (5),  // y轴方向间隔5m
-    "GridWidth", UintegerValue(5), // 指网格的宽度为5个节点
+    "MinX",      DoubleValue (120), // 指这一组节点的起始节点的x轴坐标
+    "MinY",      DoubleValue (5),  // 指这一组节点的起始节点的y轴坐标
+    "DeltaX",    DoubleValue (20),  // x轴方向间隔
+    "DeltaY",    DoubleValue (10),  // y轴方向间隔
+    "GridWidth", UintegerValue(5), // 指网格的宽度为几个节点
     "LayoutType",StringValue ("RowFirst")
     );    // "GridWidth", UintegerValue(3),
   mobility2.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", 
-    "Bounds", RectangleValue (Rectangle (190, 210, 25, 45))); // 活动范围矩形框
+    "Bounds", RectangleValue (Rectangle (100, 250, 0, 40))); // 活动范围矩形框
   mobility2.Install (staWifiNodes[1]);
   
   /* for sta-1-Wifi-3-Node 要让Wifi3网络中的Sta1以恒定速度移动  */
