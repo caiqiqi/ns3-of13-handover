@@ -383,7 +383,7 @@ main (int argc, char *argv[])
   /* for staWifi--2--Nodes */
   MobilityHelper mobility2;
   mobility2.SetPositionAllocator ("ns3::GridPositionAllocator",
-    "MinX",      DoubleValue (120), // 指这一组节点的起始节点的x轴坐标
+    "MinX",      DoubleValue (150), // 指这一组节点的起始节点的x轴坐标
     "MinY",      DoubleValue (5),  // 指这一组节点的起始节点的y轴坐标
     "DeltaX",    DoubleValue (20),  // x轴方向间隔
     "DeltaY",    DoubleValue (10),  // y轴方向间隔
