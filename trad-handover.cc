@@ -108,15 +108,16 @@ void JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Gnuplot2dDataset dataset3);
 void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor);
 
-/*  trace传输的包 */
-static void PhyTxTrace (std::string path, Ptr<const Packet> packet, 
+//  trace传输的包
+/*static void PhyTxTrace (std::string path, Ptr<const Packet> packet, 
   uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, 
   bool isShortPreamble, uint8_t txPower);
-/*  trace接收的包 */
-static void PhyRxTrace (std::string path, Ptr<const Packet> packet, 
+*/
+// trace接收的包
+/*static void PhyRxTrace (std::string path, Ptr<const Packet> packet, 
   uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, 
   bool isShortPreamble, double signalDbm, double noiseDbm);
-
+*/
 ////////////////////// 函数声明 ///////////////////
 
 
@@ -316,8 +317,8 @@ main (int argc, char *argv[])
   stasWifiDevices[0] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[0] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
-  wifiPhy.SetTxPowerStart(ap1TxPwr);
-  wifiPhy.SetTxPowerEnd  (ap1TxPwr);
+  wifiPhy.Set("TxPowerStart", DoubleValue(ap1TxPwr));
+  wifiPhy.Set("TxPowerEnd",   DoubleValue(ap1TxPwr));
   apWifiDevices[0]   = wifi.Install(wifiPhy, wifiMac, ap1WifiNode);
 
 
@@ -329,8 +330,9 @@ main (int argc, char *argv[])
   stasWifiDevices[1] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[1] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
-  wifiPhy.SetTxPowerStart(ap2TxPwr);
-  wifiPhy.SetTxPowerEnd  (ap2TxPwr);
+  wifiPhy.Set("TxPowerStart", DoubleValue(ap2TxPwr));
+  wifiPhy.Set("TxPowerEnd",   DoubleValue(ap2TxPwr));
+
   apWifiDevices[1]   = wifi.Install(wifiPhy, wifiMac, ap2WifiNode);
 
 
@@ -342,8 +344,8 @@ main (int argc, char *argv[])
   stasWifiDevices[2] = wifi.Install(wifiPhy, wifiMac, staWifiNodes[2] );
   wifiMac.SetType ("ns3::ApWifiMac", 
                    "Ssid", SsidValue (ssid));
-  wifiPhy.SetTxPowerStart(ap3TxPwr);
-  wifiPhy.SetTxPowerEnd  (ap3TxPwr);
+  wifiPhy.Set("TxPowerStart", DoubleValue(ap3TxPwr));
+  wifiPhy.Set("TxPowerEnd",   DoubleValue(ap3TxPwr));
   apWifiDevices[2]   = wifi.Install(wifiPhy, wifiMac, ap3WifiNode);
 
   MobilityHelper mobility1;
@@ -976,8 +978,9 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
 
 
 
-static void PhyRxTrace (std::string path, Ptr<const Packet> packet, uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, bool isShortPreamble, double signalDbm, double noiseDbm)
-{
+//static void PhyRxTrace (std::string path, Ptr<const Packet> packet, uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, bool isShortPreamble, double signalDbm, double noiseDbm)
+//{
+  /*
   Ptr<Packet> currentPacket;
   WifiMacHeader hdr;
   currentPacket = packet->Copy ();
@@ -988,15 +991,15 @@ static void PhyRxTrace (std::string path, Ptr<const Packet> packet, uint16_t cha
      TotRxPkts++;
   
   PhyState = signalDbm - noiseDbm;
+  */
   //NS_LOG_UNCOND ("A packet has been received with signal " << signalDbm << " and noise " << noiseDbm << "\n");
   
   //NS_LOG_UNCOND ("Number of bytes received now is " << TotRxBytes << "\n");
   //NS_LOG_UNCOND ("A packet has been received with signal " << signalDbm << " and noise " << noiseDbm << "\n");
-}
+//}
 
-
-static void PhyTxTrace (std::string path, Ptr<const Packet> packet, uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, bool isShortPreamble, uint8_t txPower)
-{
+//static void PhyTxTrace (std::string path, Ptr<const Packet> packet, uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, bool isShortPreamble, uint8_t txPower)
+//{
   /*
   int psize;
   Ptr<Packet> currentPacket;
@@ -1016,4 +1019,4 @@ static void PhyTxTrace (std::string path, Ptr<const Packet> packet, uint16_t cha
 
   //NS_LOG_UNCOND ("A packet has been sent.\n");
   //NS_LOG_UNCOND ("Number of bytes sent now is " << TotTxBytes << "\n");
-}
+//}
