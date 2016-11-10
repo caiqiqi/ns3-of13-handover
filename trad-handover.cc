@@ -83,10 +83,10 @@ uint32_t MaxRange = 80;
 Vector3D mPosition = Vector3D(350.0, 40.0, 0.0);
 Vector3D mVelocity = Vector3D(-10.0, 0.0 , 0.0);
 
-// 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送
-double ap1TxPwr = 110;
-double ap2TxPwr = 150;  // 使AP2 的传输信号强度最大
-double ap3TxPwr = 110;
+// 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送。而且越大表示信号越强。
+double ap1TxPwr = 80;
+double ap2TxPwr = 100;  // 使AP2 的传输信号强度最大
+double ap3TxPwr = 80;
 
 
 
@@ -171,6 +171,7 @@ main (int argc, char *argv[])
   
   /* 调用YansWifiChannelHelper::Default() 已经添加了默认的传播损耗模型, 下面不要再手动添加 */
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
+  Ptr<YansWifiChannel> yansWifiChannel = wifiChannel.Create();
   ////////////////////////////////////////
   ////////////// LOSS MODEL //////////////
   ////////////////////////////////////////
@@ -198,9 +199,9 @@ main (int argc, char *argv[])
   YansWifiPhyHelper wifiPhySTA = YansWifiPhyHelper::Default();
 
   wifiPhyAP.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
-  wifiPhyAP.SetChannel (wifiChannel.Create());
+  wifiPhyAP.SetChannel (yansWifiChannel);
   wifiPhySTA.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
-  wifiPhySTA.SetChannel (wifiChannel.Create());
+  wifiPhySTA.SetChannel (yansWifiChannel);
 
   WifiHelper wifi;
   /* The SetRemoteStationManager method tells the helper the type of `rate control algorithm` to use. 
@@ -572,11 +573,11 @@ main (int argc, char *argv[])
       //AsciiTraceHelper ascii;
       //csma.EnablePcapAll("goal-topo-trad");
       //csma.EnableAsciiAll (ascii.CreateFileStream ("trad-handover/trad-handover.tr"));
-      wifiPhy.EnablePcap ("trad-handover/trad-handover-ap1-wifi", apWifiDevices[0]);
-      wifiPhy.EnablePcap ("trad-handover/trad-handover-ap2-wifi", apWifiDevices[1]);
+      wifiPhyAP.EnablePcap ("trad-handover/trad-handover-ap1-wifi", apWifiDevices[0]);
+      wifiPhyAP.EnablePcap ("trad-handover/trad-handover-ap2-wifi", apWifiDevices[1]);
       //wifiPhy.EnablePcap ("trad-handover/trad-handover-ap2-sta1-wifi", stasWifiDevices[1]);
-      wifiPhy.EnablePcap ("trad-handover/trad-handover-ap3-wifi", apWifiDevices[2]);
-      wifiPhy.EnablePcap ("trad-handover/trad-handover-sta-wifi", stasWifiDevices[2].Get(0));  //只有一个
+      wifiPhyAP.EnablePcap ("trad-handover/trad-handover-ap3-wifi", apWifiDevices[2]);
+      wifiPhySTA.EnablePcap ("trad-handover/trad-handover-sta-wifi", stasWifiDevices[2].Get(0));  //只有一个
       // WifiMacHelper doesnot have `EnablePcap()` method
       //csma.EnablePcap ("trad-handover/trad-switch1-csma", switchDevices[0]);
       //csma.EnablePcap ("trad-handover/trad-switch2-csma", switchDevices[1]);
