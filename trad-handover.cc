@@ -80,13 +80,13 @@ uint32_t MaxRange = 80;
 和
 移动速度 x = 10.0,  y=  0.0
 */
-Vector3D mPosition = Vector3D(350.0, 40.0, 0.0);
-Vector3D mVelocity = Vector3D(-10.0, 0.0 , 0.0);
+Vector3D mPosition = Vector3D(150.0, 110.0, 0.0);
+Vector3D mVelocity = Vector3D(0.0, -10.0 , 0.0);
 
 // 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送。而且越大表示信号越强。
-double ap1TxPwr = 80;
-double ap2TxPwr = 100;  // 使AP2 的传输信号强度最大
-double ap3TxPwr = 80;
+double ap1TxPwr = 100;
+double ap2TxPwr = 150;  // 使AP2 的传输信号强度最大
+double ap3TxPwr = 100;
 
 
 
@@ -154,7 +154,7 @@ main (int argc, char *argv[])
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
   */
-  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));
+  //Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));
   
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
@@ -193,7 +193,7 @@ main (int argc, char *argv[])
   //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
-  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
+  //wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
   // 一个给AP，一个给STA
   YansWifiPhyHelper wifiPhyAP = YansWifiPhyHelper::Default();
   YansWifiPhyHelper wifiPhySTA = YansWifiPhyHelper::Default();
@@ -594,7 +594,7 @@ main (int argc, char *argv[])
   anim.SetConstantPosition(switchesNode.Get(1),400,0);             // s2-----node 1
   anim.SetConstantPosition(apsNode.Get(0),100,20);      // Ap1----node 2
   anim.SetConstantPosition(apsNode.Get(1),200,20);      // Ap2----node 3
-  anim.SetConstantPosition(apsNode.Get(2),300,20);      // Ap3----node 4
+  anim.SetConstantPosition(apsNode.Get(2),150,120);      // Ap3----node 4
   anim.SetConstantPosition(hostsNode.Get(0),350,60);    // H1-----node 5
   anim.SetConstantPosition(hostsNode.Get(1),400,60);    // H2-----node 6
   //anim.SetConstantPosition(staWifiNodes[2].Get(0),55,40);  //   -----node 14
