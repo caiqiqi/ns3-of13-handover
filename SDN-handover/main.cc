@@ -41,7 +41,6 @@
 
 #include "ns3/ipv4-click-routing.h"
 //#include "ns3/click-internet-stack-helper.h"
-
 #include "my-learning-controller.h"
 
 #include <iostream>
@@ -893,7 +892,8 @@ main (int argc, char *argv[])
 
   Simulator::Stop (Seconds(stopTime));
 /*----------------------------------------------------------------------*/
-  
+  NS_LOG_UNCOND ("------------Preparing for gnuplot------------");
+  // 跟gnuplot有关的命令可以用 AppendExtra()方法来实现
   std::string base = "SDN-handover__";
   //Throughput
   std::string throu = base + "ThroughputVSTime";
@@ -908,6 +908,7 @@ main (int argc, char *argv[])
   gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset;
   dataset.SetTitle (dataTitle);
+  //LINES, POINTS, LINES_POINTS, DOTS, IMPULSES, STEPS, FSTEPS, HISTEPS
   dataset.SetStyle (Gnuplot2dDataset::POINTS);
   //dataset.SetErrorBars (Gnuplot2dDataset::XY);
   //Delay
@@ -921,6 +922,7 @@ main (int argc, char *argv[])
   gnuplot1.SetTerminal ("png");
   gnuplot1.SetLegend ("Time", "Delay");
   gnuplot1.AppendExtra ("set xrange [10:35]");
+  gnuplot1.AppendExtra ("set linecolor 'green'");
   Gnuplot2dDataset dataset1;
   dataset1.SetTitle (dataTitle1);
   dataset1.SetStyle (Gnuplot2dDataset::POINTS);
