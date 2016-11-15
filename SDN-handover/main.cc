@@ -68,7 +68,7 @@ uint32_t nAp2Station = 4;
 uint32_t nAp3Station = 1;
 
 
-double nSamplingPeriod = 0.5;   // 抽样间隔，根据总的Simulation时间做相应的调整
+double nSamplingPeriod = 0.2;   // 抽样间隔，根据总的Simulation时间做相应的调整
 
 
 /* for udp-server-client application. */
