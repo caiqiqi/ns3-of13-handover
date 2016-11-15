@@ -701,15 +701,16 @@ main (int argc, char *argv[])
   std::string base = "SDN-handover__";
   //Throughput
   std::string throu = base + "ThroughputVSTime";
-  std::string graphicsFileName        = throu + ".png";
+  std::string graphicsFileName        = throu + ".eps";//.png
   std::string plotFileName            = throu + ".plt";
   std::string plotTitle               = "Throughput vs Time";
   std::string dataTitle               = "Throughput";
   Gnuplot gnuplot (graphicsFileName);
   gnuplot.SetTitle (plotTitle);
-  gnuplot.SetTerminal ("png");
+  //gnuplot.SetTerminal ("png");
+  gnuplot.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot.SetLegend ("Time", "Throughput");
-  gnuplot.AppendExtra ("set xrange [10:35]");
+  //gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset;
   dataset.SetTitle (dataTitle);
   //LINES, POINTS, LINES_POINTS, DOTS, IMPULSES, STEPS, FSTEPS, HISTEPS
@@ -717,46 +718,49 @@ main (int argc, char *argv[])
   //dataset.SetErrorBars (Gnuplot2dDataset::XY);
   //Delay
   std::string delay = base + "DelayVSTime";
-  std::string graphicsFileName1        = delay + ".png";
+  std::string graphicsFileName1        = delay + ".eps";//.png
   std::string plotFileName1            = delay + ".plt";
   std::string plotTitle1               = "Delay vs Time";
   std::string dataTitle1               = "Delay";
   Gnuplot gnuplot1 (graphicsFileName1);
   gnuplot1.SetTitle (plotTitle1);
-  gnuplot1.SetTerminal ("png");
+  //gnuplot1.SetTerminal ("png");
+  gnuplot1.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot1.SetLegend ("Time", "Delay");
-  gnuplot1.AppendExtra ("set xrange [10:35]");
-  gnuplot1.AppendExtra ("set linecolor 'green'");
+  //gnuplot1.AppendExtra ("set xrange [10:35]");
+  //gnuplot1.AppendExtra ("set linecolor 'green'");
   Gnuplot2dDataset dataset1;
   dataset1.SetTitle (dataTitle1);
   dataset1.SetStyle (Gnuplot2dDataset::POINTS);
   //dataset1.SetErrorBars (Gnuplot2dDataset::XY);
   //LostPackets
   std::string lost = base + "LostPacketsVSTime";
-  std::string graphicsFileName2        = lost + ".png";
+  std::string graphicsFileName2        = lost + ".eps";//.png
   std::string plotFileName2            = lost + ".plt";
   std::string plotTitle2               = "LostPackets vs Time";
   std::string dataTitle2               = "LostPackets";
   Gnuplot gnuplot2 (graphicsFileName2);
   gnuplot2.SetTitle (plotTitle2);
-  gnuplot2.SetTerminal ("png");
+  //gnuplot2.SetTerminal ("png");
+  gnuplot2.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot2.SetLegend ("Time", "LostPackets");
-  gnuplot2.AppendExtra ("set xrange [10:35]");
+  //gnuplot2.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset2;
   dataset2.SetTitle (dataTitle2);
   dataset2.SetStyle (Gnuplot2dDataset::POINTS);
   //dataset2.SetErrorBars (Gnuplot2dDataset::XY);
   //Jitter
   std::string jitter = base + "JitterVSTime";
-  std::string graphicsFileName3        = jitter + ".png";
+  std::string graphicsFileName3        = jitter + ".eps";//.png
   std::string plotFileName3            = jitter + ".plt";
   std::string plotTitle3               = "Jitter vs Time";
   std::string dataTitle3               = "Jitter";
   Gnuplot gnuplot3 (graphicsFileName3);
   gnuplot3.SetTitle (plotTitle3);
-  gnuplot3.SetTerminal ("png");
+  //gnuplot3.SetTerminal ("png");
+  gnuplot3.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot3.SetLegend ("Time", "Jitter");
-  gnuplot3.AppendExtra ("set xrange [10:35]");
+  //gnuplot3.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset3;
   dataset3.SetTitle (dataTitle3);
   dataset3.SetStyle (Gnuplot2dDataset::POINTS);
