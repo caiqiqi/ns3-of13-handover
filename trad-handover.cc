@@ -64,11 +64,12 @@ double nSamplingPeriod = 0.2;   // 抽样间隔，根据总的Simulation时间�
 /* for udp-server-client application. */
 uint32_t nMaxPackets = 20000;    // The maximum packets to be sent.
 double nInterval  = 0.1;  // The interval between two packet sent.
-uint32_t nPacketSize = 1024;
+uint32_t nUdpPacketSize = 1024;
 
 /* for tcp-bulk-send application. */   
 //uint32_t nMaxBytes = 1000000000;  //Zero is unlimited. 100M
 uint32_t nMaxBytes = 0;
+
 
 // 1500字节以下的帧不需要RTS/CTS
 uint32_t rtslimit = 1500;
@@ -81,7 +82,7 @@ uint32_t MaxRange = 100;
 移动速度 x = 10.0,  y=  0.0
 */
 Vector3D mPosition = Vector3D(160.0, 120.0, 0.0);
-Vector3D mVelocity = Vector3D(0.0, -10.0 , 0.0);
+Vector3D mVelocity = Vector3D(0.0, -5.0 , 0.0);
 
 // 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送。而且越大表示信号越强。
 double ap1TxPwr = 90;
@@ -138,7 +139,10 @@ RxDrop (Ptr<const Packet> p);
 int
 main (int argc, char *argv[])
 {
-
+  
+  // Set up some default values for the simulation.
+  Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (1024));
+  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("5Mbps"));
   //设置默认拥塞控制算法
   // ns-3.24   ///////
   //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpTahoe"));
@@ -495,7 +499,7 @@ main (int argc, char *argv[])
   UdpClientHelper client (h1h2Interface.GetAddress(1) ,port);   // stasWifi2Interface.GetAddress(0)
   client.SetAttribute ("MaxPackets", UintegerValue (nMaxPackets));
   client.SetAttribute ("Interval", TimeValue (Seconds(nInterval)));  
-  client.SetAttribute ("PacketSize", UintegerValue (nPacketSize));
+  client.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
   // for node 14
   ApplicationContainer clientApps = client.Install(staWifiNodes[2].Get(0));
   // for node 10
@@ -519,6 +523,7 @@ main (int argc, char *argv[])
 
   
   // TCP client
+  /*
   BulkSendHelper source ("ns3::TcpSocketFactory",
                          InetSocketAddress (h1h2Interface.GetAddress(1), port));
   // Set the amount of data to send in bytes.  Zero is unlimited.
@@ -552,7 +557,45 @@ main (int argc, char *argv[])
     ap2sourceApps.Start (Seconds (1.0));
     ap2sourceApps.Stop (Seconds (stopTime));
   }
-  
+  */
+
+  ApplicationContainer clientApps;
+  // 给3 个AP1 的stations 加上 OnOffApplication
+  for (uint32_t i = 0; i < nAp1Station; i++)
+  {
+      OnOffHelper ap1OnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
+                              InetSocketAddress (h1h2Interface.GetAddress(1), port));
+      ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+      ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+      ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+      
+      clientApps.Add( ap1OnOffHelper.Install (staWifiNodes[0].Get(i)) );
+      //ap1OnOffApp.Start (Seconds (1.0));
+  }
+
+  // 给20 个AP2 的stations 加上 OnOffApplication
+  for (uint32_t i = 0; i < nAp2Station; i++)
+  {
+      OnOffHelper ap2OnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
+                              InetSocketAddress (h1h2Interface.GetAddress(1), port));
+      ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+      ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+      ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+      
+      clientApps.Add( ap2OnOffHelper.Install (staWifiNodes[1].Get(i)) );
+      //ApplicationContainer ap2OnOffApp = ap2OnOffHelper.Install (staWifiNodes[1].Get(i));
+      //ap2OnOffApp.Start (Seconds (1.0));
+  }
+
+  // 给移动的STA加上 OnOffApplication
+  OnOffHelper staOnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
+                              InetSocketAddress (h1h2Interface.GetAddress(1), port));
+  staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+  staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+  staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+
+  clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
+
 
 
   // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
@@ -778,7 +821,7 @@ CommandSetup (int argc, char **argv)
   /* for udp-server-client application */
   // cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
   // cmd.AddValue ("Interval", "The interval between two packet sent", nInterval);
-  // cmd.AddValue ("PacketSize", "The size in byte of each packet", nPacketSize);
+  // cmd.AddValue ("PacketSize", "The size in byte of each packet", nUdpPacketSize);
 
 
   cmd.AddValue ("rtslimit", "The size of packets under which there should be RST/CST", rtslimit);
