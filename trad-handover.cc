@@ -73,20 +73,20 @@ uint32_t nMaxBytes = 0;
 // 1500字节以下的帧不需要RTS/CTS
 uint32_t rtslimit = 1500;
 
-uint32_t MaxRange = 80;
+uint32_t MaxRange = 100;
 
 /* 恒定速度移动节点的
 初始位置 x = 0.0, y = 40.0
 和
 移动速度 x = 10.0,  y=  0.0
 */
-Vector3D mPosition = Vector3D(140.0, 120.0, 0.0);
+Vector3D mPosition = Vector3D(160.0, 120.0, 0.0);
 Vector3D mVelocity = Vector3D(0.0, -10.0 , 0.0);
 
 // 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送。而且越大表示信号越强。
-double ap1TxPwr = 100;
-double ap2TxPwr = 95;
-double ap3TxPwr = 100;
+double ap1TxPwr = 90;
+double ap2TxPwr = 100;
+double ap3TxPwr = 90;
 
 
 
@@ -108,6 +108,16 @@ void JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Gnuplot2dDataset dataset3);
 void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor);
 
+// 监听服务器端网卡丢的包
+// 增强版
+/*
+static void
+RxDrop (Ptr<PcapFileWrapper> file, Ptr<const Packet> p);
+*/
+
+// 简单版
+static void
+RxDrop (Ptr<const Packet> p);
 //  trace传输的包
 /*static void PhyTxTrace (std::string path, Ptr<const Packet> packet, 
   uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, 
@@ -518,12 +528,24 @@ main (int argc, char *argv[])
   sourceApps.Stop (Seconds (stopTime));
   
 
-  
+  // 给3 个AP1 的stations 加上 BulkSender
+  for (uint32_t i = 0; i < nAp1Station; i++)
+  {
+    BulkSendHelper ap1Source ("ns3::TcpSocketFactory",
+                         InetSocketAddress (h1h2Interface.GetAddress(1), port)); // 服务器的IP
+    // Set the amount of data to send in bytes.  Zero is unlimited.
+    ap1Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+    ApplicationContainer ap1sourceApps = ap1Source.Install (staWifiNodes[0].Get(i));  // AP1内的第 i 个STA
+    ap1sourceApps.Start (Seconds (1.0));
+    ap1sourceApps.Stop (Seconds (stopTime));
+  }
+
+
   // 给20 个AP2 的stations 加上 BulkSender
   for (uint32_t i = 0; i < nAp2Station; i++)
   {
     BulkSendHelper ap2Source ("ns3::TcpSocketFactory",
-                         InetSocketAddress (h1h2Interface.GetAddress(1), port));
+                         InetSocketAddress (h1h2Interface.GetAddress(1), port));  // 服务器的IP
     // Set the amount of data to send in bytes.  Zero is unlimited.
     ap2Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
     ApplicationContainer ap2sourceApps = ap2Source.Install (staWifiNodes[1].Get(i));  // AP2内的第 i 个STA
@@ -584,7 +606,7 @@ main (int argc, char *argv[])
       //csma.EnablePcap ("trad-handover/trad-ap1-csma", apCsmaDevices[0]);
       //csma.EnablePcap ("trad-handover/trad-ap2-csma", apCsmaDevices[1]);
       //csma.EnablePcap ("trad-handover/trad-ap3-csma", apCsmaDevices[2]);
-      csma.EnablePcap ("trad-handover/trad-H1-csma", hostDevices.Get(0));
+      //csma.EnablePcap ("trad-handover/trad-H1-csma", hostDevices.Get(0));
       csma.EnablePcap ("trad-handover/trad-H2-csma", hostDevices.Get(1));
     }
 
@@ -594,7 +616,7 @@ main (int argc, char *argv[])
   anim.SetConstantPosition(switchesNode.Get(1),400,0);             // s2-----node 1
   anim.SetConstantPosition(apsNode.Get(0),100,20);      // Ap1----node 2
   anim.SetConstantPosition(apsNode.Get(1),200,20);      // Ap2----node 3
-  anim.SetConstantPosition(apsNode.Get(2),160,100);      // Ap3----node 4
+  anim.SetConstantPosition(apsNode.Get(2),180,100);      // Ap3----node 4
   anim.SetConstantPosition(hostsNode.Get(0),350,60);    // H1-----node 5
   anim.SetConstantPosition(hostsNode.Get(1),400,60);    // H2-----node 6
   //anim.SetConstantPosition(staWifiNodes[2].Get(0),55,40);  //   -----node 14
@@ -618,7 +640,16 @@ main (int argc, char *argv[])
     //Config::Connect ("/NodeList/" + i + "/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx", MakeCallback (&PhyTxTrace));
   //}
   
-  
+  // 对接收TCP流量的服务器的网卡(hostsDevices的第二张网卡)监听其丢的包
+  /*增强版
+  PcapHelper pcapHelper;
+  Ptr<PcapFileWrapper> file = pcapHelper.CreateFile ("sixth.pcap", std::ios::out, PcapHelper::DLT_PPP);
+  devices.Get (1)->TraceConnectWithoutContext("PhyRxDrop", MakeBoundCallback (&RxDrop, file));
+  */
+
+  // 简单版
+  hostDevices.Get (1)->TraceConnectWithoutContext("PhyRxDrop", MakeCallback (&RxDrop));
+
 
   NS_LOG_UNCOND ("------------Preparing for Checking all the params.------------");
   FlowMonitorHelper flowmon;
@@ -637,8 +668,8 @@ main (int argc, char *argv[])
   Gnuplot gnuplot (graphicsFileName);
   gnuplot.SetTitle (plotTitle);
   gnuplot.SetTerminal ("png");
-  gnuplot.SetLegend ("Time", "Throughput");
-  gnuplot.AppendExtra ("set xrange [10:35]");
+  gnuplot.SetLegend ("Time(seconds)", "Throughput(Kbit/s)");
+  //gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset;
   dataset.SetTitle (dataTitle);
   dataset.SetStyle (Gnuplot2dDataset::POINTS);
@@ -652,8 +683,8 @@ main (int argc, char *argv[])
   Gnuplot gnuplot1 (graphicsFileName1);
   gnuplot1.SetTitle (plotTitle1);
   gnuplot1.SetTerminal ("png");
-  gnuplot1.SetLegend ("Time", "Delay");
-  gnuplot1.AppendExtra ("set xrange [10:35]");
+  gnuplot1.SetLegend ("Time(seconds)", "Delay(seconds)");
+  //gnuplot1.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset1;
   dataset1.SetTitle (dataTitle1);
   dataset1.SetStyle (Gnuplot2dDataset::POINTS);
@@ -667,8 +698,8 @@ main (int argc, char *argv[])
   Gnuplot gnuplot2 (graphicsFileName2);
   gnuplot2.SetTitle (plotTitle2);
   gnuplot2.SetTerminal ("png");
-  gnuplot2.SetLegend ("Time", "LostPackets");
-  gnuplot2.AppendExtra ("set xrange [10:35]");
+  gnuplot2.SetLegend ("Time(seconds)", "LostPackets");
+  //gnuplot2.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset2;
   dataset2.SetTitle (dataTitle2);
   dataset2.SetStyle (Gnuplot2dDataset::POINTS);
@@ -682,8 +713,8 @@ main (int argc, char *argv[])
   Gnuplot gnuplot3 (graphicsFileName3);
   gnuplot3.SetTitle (plotTitle3);
   gnuplot3.SetTerminal ("png");
-  gnuplot3.SetLegend ("Time", "Jitter");
-  gnuplot3.AppendExtra ("set xrange [10:35]");
+  gnuplot3.SetLegend ("Time(seconds)", "Jitter(seconds)");
+  //gnuplot3.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset3;
   dataset3.SetTitle (dataTitle3);
   dataset3.SetStyle (Gnuplot2dDataset::POINTS);
@@ -994,7 +1025,21 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
 
 }
 
+/*增强版
+static void
+RxDrop (Ptr<PcapFileWrapper> file, Ptr<const Packet> p)
+{
+  NS_LOG_UNCOND ("RxDrop at " << Simulator::Now ().GetSeconds ());
+  file->Write(Simulator::Now(), p);
+}
+*/
 
+//简单版
+static void
+RxDrop (Ptr<const Packet> p)
+{
+  NS_LOG_UNCOND ("RxDrop at " << Simulator::Now ().GetSeconds ());
+}
 
 //static void PhyRxTrace (std::string path, Ptr<const Packet> packet, uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, bool isShortPreamble, double signalDbm, double noiseDbm)
 //{
