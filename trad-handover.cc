@@ -180,8 +180,6 @@ main (int argc, char *argv[])
 
   /*----- init Helpers ----- */
   CsmaHelper csma;
-  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
-  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
   
   /* 调用YansWifiChannelHelper::Default() 已经添加了默认的传播损耗模型, 下面不要再手动添加 */
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
@@ -291,11 +289,17 @@ main (int argc, char *argv[])
 
 
   /* #1 Connect traditional switch1 to traditional switch2 */
+  // switch1 和 switch2 之间的线路作为主干线路, 应该是100M的
+  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
+  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
   link = csma.Install (NodeContainer(switchesNode.Get(0),switchesNode.Get(1)));  
   switchDevices[0]. Add(link.Get(0));
   switchDevices[1]. Add(link.Get(1));
   
-  /* #2 Connect AP1, AP2 and AP3 to traditional switch1 ！！！*/  
+  /* #2 Connect AP1, AP2 and AP3 to traditional switch1 ！！！*/
+  // 各个AP到switch1的线路做一下限制, 每个AP到switch1只能有30M
+  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("30Mbps")));
+  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
   for (uint32_t i = 0; i < nAp; i++)
   {
     link = csma.Install (NodeContainer(apsNode.Get(i), switchesNode.Get(0)));   // Get(0) for switch1
@@ -570,7 +574,6 @@ main (int argc, char *argv[])
       ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
       
       clientApps.Add( ap1OnOffHelper.Install (staWifiNodes[0].Get(i)) );
-      //ap1OnOffApp.Start (Seconds (1.0));
   }
 
   // 给20 个AP2 的stations 加上 OnOffApplication
@@ -583,8 +586,6 @@ main (int argc, char *argv[])
       ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
       
       clientApps.Add( ap2OnOffHelper.Install (staWifiNodes[1].Get(i)) );
-      //ApplicationContainer ap2OnOffApp = ap2OnOffHelper.Install (staWifiNodes[1].Get(i));
-      //ap2OnOffApp.Start (Seconds (1.0));
   }
 
   // 给移动的STA加上 OnOffApplication
@@ -704,13 +705,14 @@ main (int argc, char *argv[])
   std::string base = "trad-handover__";
   //Throughput
   std::string throu = base + "ThroughputVSTime";
-  std::string graphicsFileName        = throu + ".png";
+  std::string graphicsFileName        = throu + ".eps";
   std::string plotFileName            = throu + ".plt";
   std::string plotTitle               = "Throughput vs Time";
   std::string dataTitle               = "Throughput";
   Gnuplot gnuplot (graphicsFileName);
   gnuplot.SetTitle (plotTitle);
-  gnuplot.SetTerminal ("png");
+  //gnuplot.SetTerminal ("png");
+  gnuplot.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot.SetLegend ("Time(seconds)", "Throughput(Kbit/s)");
   //gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset;
@@ -719,13 +721,14 @@ main (int argc, char *argv[])
   //dataset.SetErrorBars (Gnuplot2dDataset::XY);
   //Delay
   std::string delay = base + "DelayVSTime";
-  std::string graphicsFileName1        = delay + ".png";
+  std::string graphicsFileName1        = delay + ".eps";
   std::string plotFileName1            = delay + ".plt";
   std::string plotTitle1               = "Delay vs Time";
   std::string dataTitle1               = "Delay";
   Gnuplot gnuplot1 (graphicsFileName1);
   gnuplot1.SetTitle (plotTitle1);
-  gnuplot1.SetTerminal ("png");
+  //gnuplot1.SetTerminal ("png");
+  gnuplot1.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");  
   gnuplot1.SetLegend ("Time(seconds)", "Delay(seconds)");
   //gnuplot1.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset1;
@@ -734,13 +737,14 @@ main (int argc, char *argv[])
   //dataset1.SetErrorBars (Gnuplot2dDataset::XY);
   //LostPackets
   std::string lost = base + "LostPacketsVSTime";
-  std::string graphicsFileName2        = lost + ".png";
+  std::string graphicsFileName2        = lost + ".eps";
   std::string plotFileName2            = lost + ".plt";
   std::string plotTitle2               = "LostPackets vs Time";
   std::string dataTitle2               = "LostPackets";
   Gnuplot gnuplot2 (graphicsFileName2);
   gnuplot2.SetTitle (plotTitle2);
-  gnuplot2.SetTerminal ("png");
+  //gnuplot2.SetTerminal ("png");
+  gnuplot2.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot2.SetLegend ("Time(seconds)", "LostPackets");
   //gnuplot2.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset2;
@@ -749,13 +753,14 @@ main (int argc, char *argv[])
   //dataset2.SetErrorBars (Gnuplot2dDataset::XY);
   //Jitter
   std::string jitter = base + "JitterVSTime";
-  std::string graphicsFileName3        = jitter + ".png";
+  std::string graphicsFileName3        = jitter + ".eps";
   std::string plotFileName3            = jitter + ".plt";
   std::string plotTitle3               = "Jitter vs Time";
   std::string dataTitle3               = "Jitter";
   Gnuplot gnuplot3 (graphicsFileName3);
   gnuplot3.SetTitle (plotTitle3);
-  gnuplot3.SetTerminal ("png");
+  //gnuplot3.SetTerminal ("png");
+  gnuplot3.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot3.SetLegend ("Time(seconds)", "Jitter(seconds)");
   //gnuplot3.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset3;
