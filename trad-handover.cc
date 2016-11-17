@@ -527,14 +527,7 @@ main (int argc, char *argv[])
 
   
   // TCP client
-  /*
-  BulkSendHelper source ("ns3::TcpSocketFactory",
-                         InetSocketAddress (h1h2Interface.GetAddress(1), port));
-  // Set the amount of data to send in bytes.  Zero is unlimited.
-  source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-  ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
-  sourceApps.Start (Seconds (1.0));
-  sourceApps.Stop (Seconds (stopTime));
+  
   
 
   // 给3 个AP1 的stations 加上 BulkSender
@@ -561,8 +554,17 @@ main (int argc, char *argv[])
     ap2sourceApps.Start (Seconds (1.0));
     ap2sourceApps.Stop (Seconds (stopTime));
   }
-  */
+  
+  // the moving station 
+  BulkSendHelper source ("ns3::TcpSocketFactory",
+                         InetSocketAddress (h1h2Interface.GetAddress(1), port));
+  // Set the amount of data to send in bytes.  Zero is unlimited.
+  source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+  ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
+  sourceApps.Start (Seconds (1.0));
+  sourceApps.Stop (Seconds (stopTime));
 
+  /*
   ApplicationContainer clientApps;
   // 给3 个AP1 的stations 加上 OnOffApplication
   for (uint32_t i = 0; i < nAp1Station; i++)
@@ -596,7 +598,7 @@ main (int argc, char *argv[])
   staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
 
   clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
-
+  */
 
 
   // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
