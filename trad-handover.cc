@@ -318,7 +318,9 @@ main (int argc, char *argv[])
     switchDevices[0]. Add(link.Get(1));
   }
 
-
+  // 别忘了这里也要设置csma的link参数，否则会沿用上一个30Mbps的值
+  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
+  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
   /* #3 Connect host1 and host2 to traditonal switch2  */
   for (uint32_t i = 0; i < nHost; i++)
   {
@@ -529,7 +531,7 @@ main (int argc, char *argv[])
   // TCP client
   
   
-
+  /*
   // 给3 个AP1 的stations 加上 BulkSender
   for (uint32_t i = 0; i < nAp1Station; i++)
   {
@@ -563,8 +565,9 @@ main (int argc, char *argv[])
   ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
   sourceApps.Start (Seconds (1.0));
   sourceApps.Stop (Seconds (stopTime));
+  */
 
-  /*
+  
   ApplicationContainer clientApps;
   // 给3 个AP1 的stations 加上 OnOffApplication
   for (uint32_t i = 0; i < nAp1Station; i++)
@@ -598,7 +601,7 @@ main (int argc, char *argv[])
   staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
 
   clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
-  */
+  
 
 
   // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
