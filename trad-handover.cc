@@ -1078,6 +1078,17 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
             std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
             std::cout<<"------------------------------------------" << std::endl;
 
+            std::cout<<"[debug] i->second.txBytes " << i->second.txBytes << std::endl;
+            std::cout<<"[debug] i->second.rxBytes " << i->second.rxBytes << std::endl;
+            std::cout<<"[debug] i->second.timeFirstTxPacket.GetSeconds() " << i->second.timeFirstTxPacket.GetSeconds() << std::endl;
+            std::cout<<"[debug] i->second.timeLastRxPacket.GetSeconds() "  << i->second.timeLastRxPacket.GetSeconds()  << std::endl;
+            std::cout<<"[debug] i->second.packetsDropped.size() "          << i->second.packetsDropped.size()          << std::endl;
+            std::cout<<"[debug] i->second.lostPackets "                    << i->second.lostPackets                    << std::endl;
+            std::cout<<"[debug] i->second.delaySum.GetSeconds() "          << i->second.delaySum.GetSeconds()          << std::endl;
+            std::cout<<"[debug] i->second.jitterSum.GetSeconds() "         << i->second.jitterSum.GetSeconds()         << std::endl;
+
+
+
           }
           else
           {
