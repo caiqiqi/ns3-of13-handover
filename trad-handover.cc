@@ -58,7 +58,7 @@ uint32_t nAp2Station = 20;   //使AP2过载
 uint32_t nAp3Station = 1;
 
 
-double nSamplingPeriod = 0.2;   // 抽样间隔，根据总的Simulation时间做相应的调整
+double nSamplingPeriod = 1;   // 抽样间隔，根据总的Simulation时间做相应的调整
 
 
 /* for udp-server-client application. */
@@ -82,7 +82,7 @@ uint32_t MaxRange = 100;
 移动速度 x = 10.0,  y=  0.0
 */
 Vector3D mPosition = Vector3D(160.0, 120.0, 0.0);
-Vector3D mVelocity = Vector3D(0.0, -5.0 , 0.0);
+Vector3D mVelocity = Vector3D(0.0, -3.0 , 0.0);
 
 // 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送。而且越大表示信号越强。
 double ap1TxPwr = 90;
