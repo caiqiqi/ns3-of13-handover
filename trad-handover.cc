@@ -224,10 +224,13 @@ main (int argc, char *argv[])
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ); // 貌似只能在ns-3.25支持
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
   //QosWifiMacHelper wifiMac;
-  // 一个给AP，一个给STA
-  NqosWifiMacHelper wifiMacAP = NqosWifiMacHelper::Default ();
-  NqosWifiMacHelper wifiMacSTA = NqosWifiMacHelper::Default ();
 
+  /*  用QosWifiMacHelper明显比  NqosWifiMacHelper 的吞吐量高 */
+  // 一个给AP，一个给STA
+  // NqosWifiMacHelper wifiMacAP = NqosWifiMacHelper::Default ();
+  // NqosWifiMacHelper wifiMacSTA = NqosWifiMacHelper::Default ();
+  QosWifiMacHelper wifiMacAP = QosWifiMacHelper::Default ();
+  QosWifiMacHelper wifiMacSTA = QosWifiMacHelper::Default ();
  
   NS_LOG_UNCOND ("------------Creating Nodes------------");
   NodeContainer switchesNode, apsNode, hostsNode;
@@ -577,6 +580,7 @@ main (int argc, char *argv[])
       ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
       ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
       ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+      ap1OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
       
       clientApps.Add( ap1OnOffHelper.Install (staWifiNodes[0].Get(i)) );
   }
@@ -589,6 +593,7 @@ main (int argc, char *argv[])
       ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
       ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
       ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+      ap2OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
       
       clientApps.Add( ap2OnOffHelper.Install (staWifiNodes[1].Get(i)) );
   }
@@ -599,6 +604,7 @@ main (int argc, char *argv[])
   staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
   staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
   staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+  staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
 
   clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
   
@@ -1021,6 +1027,8 @@ JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
 {
   double tempThroughput = 0.0;
+  uint32_t TxBytesum   = 0;
+  uint32_t RxBytesum   = 0;
   uint32_t TxPacketsum = 0;
   uint32_t RxPacketsum = 0;
   uint32_t DropPacketsum = 0;
@@ -1035,8 +1043,12 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
   for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); i++){ 
       // A tuple: Source-ip, destination-ip, protocol, source-port, destination-port
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-                    
+    
+    //TODO              
+    TxBytesum     += i->second.txBytes;   // 当前已发送的字节数
+    RxBytesum     += i->second.rxBytes;   // 当前已收到的字节数
 
+    //TimeLastRxPacket   = 
     TxPacketsum   += i->second.txPackets;
     RxPacketsum   += i->second.rxPackets;
     LostPacketsum += i->second.lostPackets;
