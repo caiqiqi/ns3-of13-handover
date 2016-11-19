@@ -23,14 +23,14 @@
 #include "ns3/log.h"
 // 给传统交换机(BridgeNetDevice)
 #include "ns3/bridge-module.h"
-
 #include "ns3/global-route-manager.h"
-
 //包含 `gnuplot`和`Gnuplot2Ddatabase`
 #include "ns3/stats-module.h"
 #include "ns3/random-variable-stream.h"
-
 #include "ns3/netanim-module.h"
+
+// for DCE use
+#include "ns3/dce-module.h"
 
 #include <iostream>
 #include <stdint.h>
@@ -97,6 +97,9 @@ Ipv4Address clientIp;   // UDP/TCP的client IP
 
 
 ////////////////////// 函数声明 ///////////////////
+// 创建供http访问的html文件
+void CreateFiles ();
+
 bool CommandSetup(int argc, char **argv);
 
 void ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
@@ -172,7 +175,13 @@ main (int argc, char *argv[])
   
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
+
+  /* 创建供http用的html文件  */
+  mkdir ("files-trad-handover", 0744);
+  CreateFiles ();
   
+  // For real time 
+  //GlobalValue::Bind ("SimulatorImplementationType", StringValue("ns3::RealtimeSimulatorImpl")); 
   // Enabling Checksum computations
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
 
@@ -488,12 +497,59 @@ main (int argc, char *argv[])
   stasWifi2Interface = ip.Assign (stasWifiDevices[1]); 
   stasWifi3Interface = ip.Assign (stasWifiDevices[2]); 
 
-
+  // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
+  serverIp = h1h2Interface.GetAddress(1);
+  clientIp = stasWifi3Interface.GetAddress(0);
 
   NS_LOG_UNCOND ("-----------Creating Applications.-----------");
   uint16_t port = 9;   // Discard port (RFC 863)
   
   
+  /*   A DceManager is a DCE internal class which manage the execution of the executable you will declare to run within ns-3
+       DceManagerHelper is the tool you will use withnin your script to parameter and install DceManager on the ns-3 nodes
+       where you plan to run binaries.
+  */
+  DceManagerHelper dceManager;
+  //  dceManager.SetTaskManagerAttribute( "FiberManagerType", StringValue ( "UcontextFiberManager" ) );
+
+  // 在需要运行binary的node上安装DceManager
+  dceManager. Install (hostsNode);
+  dceManager. Install (staWifiNodes[0]);
+  dceManager. Install (staWifiNodes[1]);
+  dceManager. Install (staWifiNodes[2]);
+
+  DceApplicationHelper dce;
+  dce.SetStackSize (1 << 30 );  // 1MB stack(stack size for this application.)
+
+  // Launch the server HTTPD on hostsNode.Get(1)
+  dce.SetBinary ("thttpd");
+  dce.ResetArguments ();  // clean arguments
+  dce.ResetEnvironment ();  // clean environment
+  //  dce.AddArgument ("-D");
+  dce.SetUid (1);   // set httpd for super user execution
+  dce.SetEuid (1);
+
+  ApplicationContainer serverApps;
+  serverApps = dce.Install (hostsNode.Get(1));   // install http daemon, install 之后得到一个 ApplicationContainer
+  serverApps. Start (Seconds (1));
+
+
+  // Launch the client WGET on STA nodes
+  dce.SetBinary ("wget");
+  dce.ResetArguments ();  // clean arguments
+  dce.ResetEnvironment ();  // clean environment
+  dce.AddArgument ("-r");  // recursive wget
+  dce.AddArgument ("http://" + serverIp + "/index.html");
+  // dce.AddArgument ("http://10.0.0.2/index.html");
+
+  ApplicationContainer clientApps;
+
+  clientApps. Add (dce.Install(hostsNode.Get(1)) );
+  clientApps. Add (dce.Install(staWifiNodes[0]));
+  clientApps. Add (dce.Install(staWifiNodes[1]));
+  clientApps. Add (dce.Install(staWifiNodes[2]));
+
+  clientApps. Start (Seconds (1.001));
 
   /*
   // UDP server
@@ -521,14 +577,14 @@ main (int argc, char *argv[])
   
 
 
-  
+  /*
   // TCP server
   PacketSinkHelper sink ("ns3::TcpSocketFactory",
                          InetSocketAddress (Ipv4Address::GetAny (), port));
   ApplicationContainer sinkApps = sink.Install (hostsNode.Get(1));
   sinkApps.Start (Seconds (1.0));
   sinkApps.Stop (Seconds(stopTime));
-
+  */
 
   
   // TCP client
@@ -570,7 +626,7 @@ main (int argc, char *argv[])
   sourceApps.Stop (Seconds (stopTime));
   */
 
-  
+  /*
   ApplicationContainer clientApps;
   // 给3 个AP1 的stations 加上 OnOffApplication
   for (uint32_t i = 0; i < nAp1Station; i++)
@@ -607,12 +663,9 @@ main (int argc, char *argv[])
   staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
 
   clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
-  
+  */
 
 
-  // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
-  serverIp = h1h2Interface.GetAddress(1);
-  clientIp = stasWifi3Interface.GetAddress(0);
 
   // Create a source to send packets.  Instead of a full Application
   // and the helper APIs you might see in other example files, this example
@@ -847,6 +900,17 @@ CommandSetup (int argc, char **argv)
   return true;
 }
 
+void
+CreateFiles ()
+{
+  FILE *fp = fopen ("files-trad-handover/index.html", "wb"); 
+  int i;
+  for (i = 0; i < 500000;i++)
+    {
+      fprintf (fp, "%d\n", i);
+    }
+  fclose (fp);
+}
 
 /*
  * Calculate Throughput using Flowmonitor
@@ -1078,13 +1142,13 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
             std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
             std::cout<<"------------------------------------------" << std::endl;
 
-            std::cout<<"[debug] i->second.txBytes " << i->second.txBytes << std::endl;
-            std::cout<<"[debug] i->second.rxBytes " << i->second.rxBytes << std::endl;
-            std::cout<<"[debug] i->second.timeFirstTxPacket.GetSeconds() " << i->second.timeFirstTxPacket.GetSeconds() << std::endl;
-            std::cout<<"[debug] i->second.timeLastRxPacket.GetSeconds() "  << i->second.timeLastRxPacket.GetSeconds()  << std::endl;
+            std::cout<<"[debug] i->second.txBytes " << i->second.txBytes << std::endl;    // 总共已发送字节数
+            std::cout<<"[debug] i->second.rxBytes " << i->second.rxBytes << std::endl;   //  总共已接收字节数
+            std::cout<<"[debug] i->second.timeFirstTxPacket.GetSeconds() " << i->second.timeFirstTxPacket.GetSeconds() << std::endl;   // 第一个发送包的时间
+            std::cout<<"[debug] i->second.timeLastRxPacket.GetSeconds() "  << i->second.timeLastRxPacket.GetSeconds()  << std::endl; // 当前最后一次接收到包的时间
             std::cout<<"[debug] i->second.packetsDropped.size() "          << i->second.packetsDropped.size()          << std::endl;
-            std::cout<<"[debug] i->second.lostPackets "                    << i->second.lostPackets                    << std::endl;
-            std::cout<<"[debug] i->second.delaySum.GetSeconds() "          << i->second.delaySum.GetSeconds()          << std::endl;
+            std::cout<<"[debug] i->second.lostPackets "                            << i->second.lostPackets                    << std::endl;
+            std::cout<<"[debug] i->second.delaySum.GetSeconds() "       << i->second.delaySum.GetSeconds()          << std::endl;
             std::cout<<"[debug] i->second.jitterSum.GetSeconds() "         << i->second.jitterSum.GetSeconds()         << std::endl;
 
 
