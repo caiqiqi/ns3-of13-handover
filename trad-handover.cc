@@ -43,7 +43,7 @@ using namespace ns3;
 
 //NS_LOG_COMPONENT_DEFINE ("TradHandoverScript");
 
-
+double lastThrou   = 0.0;
 
 bool tracing  = true;
 
@@ -58,7 +58,7 @@ uint32_t nAp2Station = 20;   //使AP2过载
 uint32_t nAp3Station = 1;
 
 
-double nSamplingPeriod = 1;   // 抽样间隔，根据总的Simulation时间做相应的调整
+double nSamplingPeriod = 0.7;   // 抽样间隔，根据总的Simulation时间做相应的调整
 
 
 /* for udp-server-client application. */
@@ -770,74 +770,77 @@ main (int argc, char *argv[])
   //Throughput
   std::string throu = base + "ThroughputVSTime";
   std::string graphicsFileName        = throu + ".eps";
-  std::string plotFileName            = throu + ".plt";
-  std::string plotTitle               = "Throughput vs Time";
-  std::string dataTitle               = "Throughput";
+  std::string plotFileName            = throu + "_tcp.dat";
+  //std::string plotTitle               = "Throughput vs Time";
+  // std::string dataTitle               = "Throughput";
   Gnuplot gnuplot (graphicsFileName);
-  gnuplot.SetTitle (plotTitle);
+  // gnuplot.SetTitle (plotTitle);
   //gnuplot.SetTerminal ("png");
-  gnuplot.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
-  gnuplot.SetLegend ("Time(seconds)", "Throughput(Kbit/s)");
+  // gnuplot.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
+  // gnuplot.SetLegend ("Time(seconds)", "Throughput(Kbit/s)");
   //gnuplot.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset;
-  dataset.SetTitle (dataTitle);
-  dataset.SetStyle (Gnuplot2dDataset::POINTS);
+  //dataset.SetTitle (dataTitle);
+  // dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
   //dataset.SetErrorBars (Gnuplot2dDataset::XY);
   //Delay
   std::string delay = base + "DelayVSTime";
   std::string graphicsFileName1        = delay + ".eps";
-  std::string plotFileName1            = delay + ".plt";
-  std::string plotTitle1               = "Delay vs Time";
-  std::string dataTitle1               = "Delay";
+  std::string plotFileName1            = delay + "_tcp.dat";
+  //std::string plotTitle1               = "Delay vs Time";
+  // std::string dataTitle1               = "Delay";
   Gnuplot gnuplot1 (graphicsFileName1);
-  gnuplot1.SetTitle (plotTitle1);
+  // gnuplot1.SetTitle (plotTitle1);
   //gnuplot1.SetTerminal ("png");
-  gnuplot1.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");  
-  gnuplot1.SetLegend ("Time(seconds)", "Delay(seconds)");
+  // gnuplot1.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");  
+  // gnuplot1.SetLegend ("Time(seconds)", "Delay(seconds)");
   //gnuplot1.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset1;
-  dataset1.SetTitle (dataTitle1);
-  dataset1.SetStyle (Gnuplot2dDataset::POINTS);
+  //dataset1.SetTitle (dataTitle1);
+  // dataset1.SetStyle (Gnuplot2dDataset::LINES_POINTS);
   //dataset1.SetErrorBars (Gnuplot2dDataset::XY);
   //LostPackets
   std::string lost = base + "LostPacketsVSTime";
   std::string graphicsFileName2        = lost + ".eps";
-  std::string plotFileName2            = lost + ".plt";
-  std::string plotTitle2               = "LostPackets vs Time";
-  std::string dataTitle2               = "LostPackets";
+  std::string plotFileName2            = lost + "_tcp.dat";
+  //std::string plotTitle2               = "LostPackets vs Time";
+  // std::string dataTitle2               = "LostPackets";
   Gnuplot gnuplot2 (graphicsFileName2);
-  gnuplot2.SetTitle (plotTitle2);
+  // gnuplot2.SetTitle (plotTitle2);
   //gnuplot2.SetTerminal ("png");
-  gnuplot2.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
-  gnuplot2.SetLegend ("Time(seconds)", "LostPackets");
+  // gnuplot2.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
+  // gnuplot2.SetLegend ("Time(seconds)", "LostPackets");
   //gnuplot2.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset2;
-  dataset2.SetTitle (dataTitle2);
-  dataset2.SetStyle (Gnuplot2dDataset::POINTS);
+  //dataset2.SetTitle (dataTitle2);
+  // dataset2.SetStyle (Gnuplot2dDataset::LINES_POINTS);
   //dataset2.SetErrorBars (Gnuplot2dDataset::XY);
+  
+  /*
   //Jitter
   std::string jitter = base + "JitterVSTime";
   std::string graphicsFileName3        = jitter + ".eps";
-  std::string plotFileName3            = jitter + ".plt";
-  std::string plotTitle3               = "Jitter vs Time";
-  std::string dataTitle3               = "Jitter";
+  std::string plotFileName3            = jitter + ".dat";
+  //std::string plotTitle3               = "Jitter vs Time";
+  // std::string dataTitle3               = "Jitter";
   Gnuplot gnuplot3 (graphicsFileName3);
-  gnuplot3.SetTitle (plotTitle3);
+  // gnuplot3.SetTitle (plotTitle3);
   //gnuplot3.SetTerminal ("png");
-  gnuplot3.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
-  gnuplot3.SetLegend ("Time(seconds)", "Jitter(seconds)");
+  // gnuplot3.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
+  // gnuplot3.SetLegend ("Time(seconds)", "Jitter(seconds)");
   //gnuplot3.AppendExtra ("set xrange [10:35]");
   Gnuplot2dDataset dataset3;
-  dataset3.SetTitle (dataTitle3);
-  dataset3.SetStyle (Gnuplot2dDataset::POINTS);
+  //dataset3.SetTitle (dataTitle3);
+  // dataset3.SetStyle (Gnuplot2dDataset::LINES_POINTS);
   //dataset3.SetErrorBars (Gnuplot2dDataset::XY);
+  */
 
 /*-----------------------------------------------------*/
   // 测吞吐量, 延时, 丢包, 抖动
   ThroughputMonitor (&flowmon, monitor, dataset);
   DelayMonitor      (&flowmon, monitor, dataset1);
   LostPacketsMonitor(&flowmon, monitor, dataset2);
-  JitterMonitor     (&flowmon, monitor, dataset3);
+  // JitterMonitor     (&flowmon, monitor, dataset3);
   // 打印出各种参数
   PrintParams       (&flowmon, monitor);
 /*-----------------------------------------------------*/
@@ -846,6 +849,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND ("------------Running Simulation.------------");
   Simulator::Run ();
 
+  
   //Throughput
   gnuplot.AddDataset (dataset);
   std::ofstream plotFile (plotFileName.c_str());
@@ -862,11 +866,13 @@ main (int argc, char *argv[])
   gnuplot2.GenerateOutput (plotFile2);
   plotFile2.close ();
   //Jitter
+  /*
   gnuplot3.AddDataset (dataset3);
   std::ofstream plotFile3 (plotFileName3.c_str());
   gnuplot3.GenerateOutput (plotFile3);
   plotFile3.close ();
-
+  */
+  
 
   //monitor->SerializeToXmlFile("trad-handover/trad-handover.flowmon", true, true);
   
@@ -926,7 +932,7 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Gnuplot2dDataset dataset)
 {
   
-  double throu   = 0.0;
+  double tmpThrou ;
   monitor->CheckForLostPackets ();
   std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
   /* since fmhelper is a pointer, we should use it as a pointer.
@@ -935,11 +941,9 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
   for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
     {
-    /* 
-     * `Ipv4FlowClassifier`
-     * Classifies packets by looking at their IP and TCP/UDP headers. 
-     * FiveTuple五元组是：(source-ip, destination-ip, protocol, source-port, destination-port)
-    */
+            tmpThrou   = i->second.rxBytes * 8.0 / 
+              (i->second.timeLastRxPacket.GetSeconds() - 
+                i->second.timeFirstTxPacket.GetSeconds())/1024 ;
 
     /* 每个flow是根据包的五元组(协议，源IP/端口，目的IP/端口)来区分的 */
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
@@ -950,10 +954,23 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
         // TCP_PORT_NUMBER = 6
           if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
           {
-            throu   = i->second.rxBytes * 8.0 / 
-              (i->second.timeLastRxPacket.GetSeconds() - 
-                i->second.timeFirstTxPacket.GetSeconds())/1024 ;
-            dataset.Add  (Simulator::Now().GetSeconds(), throu);
+            // 第一次lastThrou 的值为0
+            if (lastThrou == 0)
+            {
+              dataset.Add  (Simulator::Now().GetSeconds(), tmpThrou);
+              lastThrou = tmpThrou;
+            }
+            else // 第一次调用的时候 lastThrou还是0.0; 之后只要 tmpThrou 不等于 lastThrou, 即吞吐量有变化(不管变大还是变小)都将这个值加入dataSet中
+              if ( tmpThrou - lastThrou)
+              {
+                dataset.Add  (Simulator::Now().GetSeconds(), tmpThrou);
+                lastThrou = tmpThrou ;
+              }
+              // 否则吞吐量为0 
+              else
+              {
+                dataset.Add  (Simulator::Now().GetSeconds(), 0.0);
+              } 
           }
           else
           {
@@ -967,7 +984,6 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
    */
   Simulator::Schedule (Seconds(nSamplingPeriod), &ThroughputMonitor, fmhelper, monitor, 
     dataset);
-
 }
 void
 DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
@@ -986,15 +1002,15 @@ DelayMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 
       Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
       
-      RxPacketsum  += i->second.rxPackets;
-      Delaysum     += i->second.delaySum.GetSeconds();
+      RxPacketsum  = i->second.rxPackets;
+      Delaysum     = i->second.delaySum.GetSeconds();
       if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
         {
           // UDP_PROT_NUMBER = 17
           // TCP_PORT_NUMBER = 6
             if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
             {
-              delay = Delaysum/ RxPacketsum;
+              delay = Delaysum / RxPacketsum * 1000;   // 延时单位为ms
               dataset1.Add (Simulator::Now().GetSeconds(), delay);
             }
             else
@@ -1024,7 +1040,7 @@ LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
-    LostPacketsum += i->second.lostPackets;
+    LostPacketsum = i->second.lostPackets;
 
     if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
@@ -1064,8 +1080,8 @@ JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
-    RxPacketsum   += i->second.rxPackets;
-    JitterSum     += i->second.jitterSum.GetSeconds();
+    RxPacketsum   = i->second.rxPackets;
+    JitterSum     = i->second.jitterSum.GetSeconds();
 
     if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
@@ -1091,8 +1107,8 @@ JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
 void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
 {
   double tempThroughput = 0.0;
-  uint32_t TxBytesum   = 0;
-  uint32_t RxBytesum   = 0;
+  // uint32_t TxBytesum   = 0;
+  // uint32_t RxBytesum   = 0;
   uint32_t TxPacketsum = 0;
   uint32_t RxPacketsum = 0;
   uint32_t DropPacketsum = 0;
@@ -1109,20 +1125,21 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
     
     //TODO              
-    TxBytesum     += i->second.txBytes;   // 当前已发送的字节数
-    RxBytesum     += i->second.rxBytes;   // 当前已收到的字节数
+    // TxBytesum     = i->second.txBytes;   // 当前已发送的字节数
+    // RxBytesum     = i->second.rxBytes;   // 当前已收到的字节数
 
     //TimeLastRxPacket   = 
-    TxPacketsum   += i->second.txPackets;
-    RxPacketsum   += i->second.rxPackets;
-    LostPacketsum += i->second.lostPackets;
-    DropPacketsum += i->second.packetsDropped.size();
-    Delaysum      += i->second.delaySum.GetSeconds();
-    JitterSum     += i->second.jitterSum.GetSeconds();
+    TxPacketsum   = i->second.txPackets;
+    RxPacketsum   = i->second.rxPackets;
+    LostPacketsum = i->second.lostPackets;
+    DropPacketsum = i->second.packetsDropped.size();
+    Delaysum      = i->second.delaySum.GetSeconds();
+    JitterSum     = i->second.jitterSum.GetSeconds();
     
     tempThroughput = (i->second.rxBytes * 8.0 / 
       (i->second.timeLastRxPacket.GetSeconds() - 
         i->second.timeFirstTxPacket.GetSeconds())/1024);
+
 
     if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
@@ -1135,7 +1152,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
             std::cout<< "Tx Packets = " << TxPacketsum << std::endl;
             std::cout<< "Rx Packets = " << RxPacketsum << std::endl;
             std::cout<< "Throughput: "<< tempThroughput <<" Kbps" << std::endl;
-            std::cout<< "Delay: " << Delaysum/ RxPacketsum << std::endl;
+            std::cout<< "Delay: " << Delaysum/ RxPacketsum * 1000 << " ms" << std::endl;   // 延时单位为ms
             std::cout<< "LostPackets: " << LostPacketsum << std::endl;
             std::cout<< "Jitter: " << JitterSum/ (RxPacketsum - 1) << std::endl;
             std::cout << "Dropped Packets: " << DropPacketsum << std::endl;
