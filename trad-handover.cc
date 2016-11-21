@@ -43,11 +43,20 @@ using namespace ns3;
 
 //NS_LOG_COMPONENT_DEFINE ("TradHandoverScript");
 
+uint32_t nApplicationType = 0;
+
+const uint32_t APP_TCP_ONOFF = 1;
+const uint32_t APP_TCP_BULK    = 2;
+const uint32_t APP_UDP               = 3;
+
+
 double lastThrou   = 0.0;
 
 bool tracing  = true;
 
 
+double serverStartTime = 1.0;
+double startTime = 1.001;
 double stopTime = 40.0;  // when the simulation stops
 
 uint32_t nAp         = 3;
@@ -58,12 +67,12 @@ uint32_t nAp2Station = 20;   //使AP2过载
 uint32_t nAp3Station = 1;
 
 
-double nSamplingPeriod = 0.7;   // 抽样间隔，根据总的Simulation时间做相应的调整
+double nSamplingPeriod = 0.8;   // 抽样间隔，根据总的Simulation时间做相应的调整
 
 
 /* for udp-server-client application. */
 uint32_t nMaxPackets = 20000;    // The maximum packets to be sent.
-double nInterval  = 0.1;  // The interval between two packet sent.
+double nUdpInterval  = 0.2;  // The interval between two packet sent.
 uint32_t nUdpPacketSize = 1024;
 
 /* for tcp-bulk-send application. */   
@@ -94,10 +103,35 @@ double ap3TxPwr = 90;
 Ipv4Address serverIp;   // UDP/TCP的server IP
 Ipv4Address clientIp;   // UDP/TCP的client IP
 
+std::string filePrefix = "trad-handover__";
+// Throughput
+std::string throu = filePrefix + "ThroughputVSTime";
+std::string graphicsFileName        = throu + ".eps";
+std::string plotFileName;
+//  Delay
+std::string delay = filePrefix + "DelayVSTime";
+std::string graphicsFileName1        = delay + ".eps";
+std::string plotFileName1;
+// Lost packet
+std::string lost = filePrefix + "LostPacketsVSTime";
+std::string graphicsFileName2        = lost + ".eps";
+std::string plotFileName2;
+
+Gnuplot gnuplot (graphicsFileName);
+Gnuplot2dDataset dataset;
+Gnuplot gnuplot1 (graphicsFileName1);
+Gnuplot2dDataset dataset1;
+Gnuplot gnuplot2 (graphicsFileName2);
+Gnuplot2dDataset dataset2;
+
 
 
 ////////////////////// 函数声明 ///////////////////
 bool CommandSetup(int argc, char **argv);
+
+// 设置文件输出后缀名
+void
+SetOutput (uint32_t application_type);
 
 void ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
   Gnuplot2dDataset dataset);
@@ -146,16 +180,6 @@ main (int argc, char *argv[])
   //设置默认拥塞控制算法
   // ns-3.24   ///////
   //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpTahoe"));
-  // ns-3.25后 ////////
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpNewReno"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpHybla"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpHighSpeed"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpVegas"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpScalable"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpVeno"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpBic"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpWestwood"));
-  //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpWestwoodPlus"));
 
   Config::SetDefault ("ns3::Ipv4GlobalRouting::RespondToInterfaceEvents", BooleanValue (true));
   /* RTS/CTS 一种半双工的握手协议 
@@ -488,131 +512,157 @@ main (int argc, char *argv[])
   stasWifi2Interface = ip.Assign (stasWifiDevices[1]); 
   stasWifi3Interface = ip.Assign (stasWifiDevices[2]); 
 
+  // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
+  serverIp = h1h2Interface.GetAddress(1);
+  clientIp = stasWifi3Interface.GetAddress(0);
 
 
   NS_LOG_UNCOND ("-----------Creating Applications.-----------");
   uint16_t port = 9;   // Discard port (RFC 863)
   
-  
-
-  /*
-  // UDP server
-  UdpServerHelper server (port);  // for the server side, only one param(port) is specified
-  // for node 6
-  ApplicationContainer serverApps = server.Install (hostsNode.Get(1));
-  serverApps.Start (Seconds(1.0));  
-  serverApps.Stop (Seconds(stopTime));  
-  
-
-  // UDP client
-  UdpClientHelper client (h1h2Interface.GetAddress(1) ,port);   // stasWifi2Interface.GetAddress(0)
-  client.SetAttribute ("MaxPackets", UintegerValue (nMaxPackets));
-  client.SetAttribute ("Interval", TimeValue (Seconds(nInterval)));  
-  client.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
-  // for node 14
-  ApplicationContainer clientApps = client.Install(staWifiNodes[2].Get(0));
-  // for node 10
-  //ApplicationContainer clientApps = client.Install(staWifiNodes[1].Get(0));
-  // for node 5
-  //ApplicationContainer clientApps = client.Install(hostsNode.Get(0));
-  clientApps.Start (Seconds(1.1));  
-  clientApps.Stop (Seconds(stopTime));
-  */
-  
-
-
-  
-  // TCP server
-  PacketSinkHelper sink ("ns3::TcpSocketFactory",
-                         InetSocketAddress (Ipv4Address::GetAny (), port));
-  ApplicationContainer sinkApps = sink.Install (hostsNode.Get(1));
-  sinkApps.Start (Seconds (1.0));
-  sinkApps.Stop (Seconds(stopTime));
-
-
-  
-  // TCP client
-  
-  
-  /*
-  // 给3 个AP1 的stations 加上 BulkSender
-  for (uint32_t i = 0; i < nAp1Station; i++)
+/*  判断应用类型，TCP bulk 还是 TCP onoff , 还是UDP  */
+  if (nApplicationType == 0)
   {
-    BulkSendHelper ap1Source ("ns3::TcpSocketFactory",
-                         InetSocketAddress (h1h2Interface.GetAddress(1), port)); // 服务器的IP
-    // Set the amount of data to send in bytes.  Zero is unlimited.
-    ap1Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-    ApplicationContainer ap1sourceApps = ap1Source.Install (staWifiNodes[0].Get(i));  // AP1内的第 i 个STA
-    ap1sourceApps.Start (Seconds (1.0));
-    ap1sourceApps.Stop (Seconds (stopTime));
+    std::cout << "[!] Please choose application to run! '--nApplicationType='  tcp-onoff(1), tcp-bulk(2) or udp(3)" << std::endl;
+    return 1;
   }
 
-
-  // 给20 个AP2 的stations 加上 BulkSender
-  for (uint32_t i = 0; i < nAp2Station; i++)
+  if (nApplicationType == APP_UDP )
   {
-    BulkSendHelper ap2Source ("ns3::TcpSocketFactory",
-                         InetSocketAddress (h1h2Interface.GetAddress(1), port));  // 服务器的IP
-    // Set the amount of data to send in bytes.  Zero is unlimited.
-    ap2Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-    ApplicationContainer ap2sourceApps = ap2Source.Install (staWifiNodes[1].Get(i));  // AP2内的第 i 个STA
-    ap2sourceApps.Start (Seconds (1.0));
-    ap2sourceApps.Stop (Seconds (stopTime));
-  }
-  
-  // the moving station 
-  BulkSendHelper source ("ns3::TcpSocketFactory",
-                         InetSocketAddress (h1h2Interface.GetAddress(1), port));
-  // Set the amount of data to send in bytes.  Zero is unlimited.
-  source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-  ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
-  sourceApps.Start (Seconds (1.0));
-  sourceApps.Stop (Seconds (stopTime));
-  */
-
-  
-  ApplicationContainer clientApps;
-  // 给3 个AP1 的stations 加上 OnOffApplication
-  for (uint32_t i = 0; i < nAp1Station; i++)
-  {
-      OnOffHelper ap1OnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
-                              InetSocketAddress (h1h2Interface.GetAddress(1), port));
-      ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-      ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-      ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
-      ap1OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+      // UDP server
+      UdpServerHelper server (port);  // for the server side, only one param(port) is specified
+      // for node 6
+      ApplicationContainer serverApps = server.Install (hostsNode.Get(1));
+      serverApps.Start (Seconds(serverStartTime));  
+      serverApps.Stop (Seconds(stopTime));  
       
-      clientApps.Add( ap1OnOffHelper.Install (staWifiNodes[0].Get(i)) );
+    
+      // UDP client
+      ApplicationContainer clientApps;
+    
+      UdpClientHelper client (h1h2Interface.GetAddress(1) ,port);   // stasWifi2Interface.GetAddress(0)
+      client.SetAttribute ("MaxPackets", UintegerValue (nMaxPackets));
+      client.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+      client.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+
+
+      // 给3 个AP1 的stations 加上 UdpClient
+      for (uint32_t i =0; i < nAp1Station; i++)
+      {
+          clientApps. Add( client.Install(staWifiNodes[0].Get(i)) ) ;
+      }
+      // 给20 个AP2 的stations 加上 UdpClient
+      for (uint32_t i =0; i < nAp2Station; i++)
+      {
+        clientApps. Add( client.Install(staWifiNodes[1].Get(i)) ) ;
+      }
+      // The moving station
+      clientApps. Add( client.Install(staWifiNodes[2].Get(0)) ) ;
+    
+      clientApps.Start (Seconds(startTime));  
+      clientApps.Stop (Seconds(stopTime));
   }
 
-  // 给20 个AP2 的stations 加上 OnOffApplication
-  for (uint32_t i = 0; i < nAp2Station; i++)
+
+  if (nApplicationType == APP_TCP_BULK )
   {
-      OnOffHelper ap2OnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
-                              InetSocketAddress (h1h2Interface.GetAddress(1), port));
-      ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-      ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-      ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
-      ap2OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+      // TCP server
+      PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                             InetSocketAddress (Ipv4Address::GetAny (), port));
+      ApplicationContainer sinkApps = sink.Install (hostsNode.Get(1));
+      sinkApps.Start (Seconds (serverStartTime));
+      sinkApps.Stop (Seconds(stopTime));
+    
       
-      clientApps.Add( ap2OnOffHelper.Install (staWifiNodes[1].Get(i)) );
+      // TCP client BulkSenderApplication
+    
+      // 给3 个AP1 的stations 加上 BulkSender
+      for (uint32_t i = 0; i < nAp1Station; i++)
+      {
+        BulkSendHelper ap1Source ("ns3::TcpSocketFactory",
+                             InetSocketAddress (h1h2Interface.GetAddress(1), port)); // 服务器的IP
+        // Set the amount of data to send in bytes.  Zero is unlimited.
+        ap1Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+        ApplicationContainer ap1sourceApps = ap1Source.Install (staWifiNodes[0].Get(i));  // AP1内的第 i 个STA
+        ap1sourceApps.Start (Seconds (startTime));
+        ap1sourceApps.Stop (Seconds (stopTime));
+      }
+    
+    
+      // 给20 个AP2 的stations 加上 BulkSender
+      for (uint32_t i = 0; i < nAp2Station; i++)
+      {
+        BulkSendHelper ap2Source ("ns3::TcpSocketFactory",
+                             InetSocketAddress (h1h2Interface.GetAddress(1), port));  // 服务器的IP
+        // Set the amount of data to send in bytes.  Zero is unlimited.
+        ap2Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+        ApplicationContainer ap2sourceApps = ap2Source.Install (staWifiNodes[1].Get(i));  // AP2内的第 i 个STA
+        ap2sourceApps.Start (Seconds (startTime));
+        ap2sourceApps.Stop (Seconds (stopTime));
+      }
+      
+      // the moving station 
+      BulkSendHelper source ("ns3::TcpSocketFactory",
+                             InetSocketAddress (h1h2Interface.GetAddress(1), port));
+      // Set the amount of data to send in bytes.  Zero is unlimited.
+      source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+      ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
+      sourceApps.Start (Seconds (startTime));
+      sourceApps.Stop (Seconds (stopTime));
   }
 
-  // 给移动的STA加上 OnOffApplication
-  OnOffHelper staOnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
-                              InetSocketAddress (h1h2Interface.GetAddress(1), port));
-  staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-  staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-  staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
-  staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
 
-  clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
+  if (nApplicationType == APP_TCP_ONOFF )
+  {
+      
+      // TCP server
+      PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                             InetSocketAddress (Ipv4Address::GetAny (), port));
+      ApplicationContainer sinkApps = sink.Install (hostsNode.Get(1));
+      sinkApps.Start (Seconds (1.0));
+      sinkApps.Stop (Seconds(stopTime));
+
+      // TCP client OnOffApplication
+      ApplicationContainer clientApps;
+      // 给3 个AP1 的stations 加上 OnOffApplication
+      for (uint32_t i = 0; i < nAp1Station; i++)
+      {
+          OnOffHelper ap1OnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
+                                  InetSocketAddress (h1h2Interface.GetAddress(1), port));
+          ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
+          ap1OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+          
+          clientApps.Add( ap1OnOffHelper.Install (staWifiNodes[0].Get(i)) );
+      }
+    
+      // 给20 个AP2 的stations 加上 OnOffApplication
+      for (uint32_t i = 0; i < nAp2Station; i++)
+      {
+          OnOffHelper ap2OnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
+                                  InetSocketAddress (h1h2Interface.GetAddress(1), port));
+          ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
+          ap2OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+          
+          clientApps.Add( ap2OnOffHelper.Install (staWifiNodes[1].Get(i)) );
+      }
+    
+      // 给移动的STA加上 OnOffApplication
+      OnOffHelper staOnOffHelper = OnOffHelper ("ns3::TcpSocketFactory",
+                                  InetSocketAddress (h1h2Interface.GetAddress(1), port));
+      staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+      staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+      staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
+      staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+    
+      clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
+  }
   
 
 
-  // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
-  serverIp = h1h2Interface.GetAddress(1);
-  clientIp = stasWifi3Interface.GetAddress(0);
 
   // Create a source to send packets.  Instead of a full Application
   // and the helper APIs you might see in other example files, this example
@@ -712,77 +762,13 @@ main (int argc, char *argv[])
 
   Simulator::Stop (Seconds(stopTime));
 /*----------------------------------------------------------------------*/
-  
-  std::string base = "trad-handover__";
-  //Throughput
-  std::string throu = base + "ThroughputVSTime";
-  std::string graphicsFileName        = throu + ".eps";
-  std::string plotFileName            = throu + "_tcp.dat";
-  //std::string plotTitle               = "Throughput vs Time";
-  // std::string dataTitle               = "Throughput";
-  Gnuplot gnuplot (graphicsFileName);
-  // gnuplot.SetTitle (plotTitle);
-  //gnuplot.SetTerminal ("png");
-  // gnuplot.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
-  // gnuplot.SetLegend ("Time(seconds)", "Throughput(Kbit/s)");
-  //gnuplot.AppendExtra ("set xrange [10:35]");
-  Gnuplot2dDataset dataset;
-  //dataset.SetTitle (dataTitle);
-  // dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-  //dataset.SetErrorBars (Gnuplot2dDataset::XY);
-  //Delay
-  std::string delay = base + "DelayVSTime";
-  std::string graphicsFileName1        = delay + ".eps";
-  std::string plotFileName1            = delay + "_tcp.dat";
-  //std::string plotTitle1               = "Delay vs Time";
-  // std::string dataTitle1               = "Delay";
-  Gnuplot gnuplot1 (graphicsFileName1);
-  // gnuplot1.SetTitle (plotTitle1);
-  //gnuplot1.SetTerminal ("png");
-  // gnuplot1.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");  
-  // gnuplot1.SetLegend ("Time(seconds)", "Delay(seconds)");
-  //gnuplot1.AppendExtra ("set xrange [10:35]");
-  Gnuplot2dDataset dataset1;
-  //dataset1.SetTitle (dataTitle1);
-  // dataset1.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-  //dataset1.SetErrorBars (Gnuplot2dDataset::XY);
-  //LostPackets
-  std::string lost = base + "LostPacketsVSTime";
-  std::string graphicsFileName2        = lost + ".eps";
-  std::string plotFileName2            = lost + "_tcp.dat";
-  //std::string plotTitle2               = "LostPackets vs Time";
-  // std::string dataTitle2               = "LostPackets";
-  Gnuplot gnuplot2 (graphicsFileName2);
-  // gnuplot2.SetTitle (plotTitle2);
-  //gnuplot2.SetTerminal ("png");
-  // gnuplot2.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
-  // gnuplot2.SetLegend ("Time(seconds)", "LostPackets");
-  //gnuplot2.AppendExtra ("set xrange [10:35]");
-  Gnuplot2dDataset dataset2;
-  //dataset2.SetTitle (dataTitle2);
-  // dataset2.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-  //dataset2.SetErrorBars (Gnuplot2dDataset::XY);
-  
-  /*
-  //Jitter
-  std::string jitter = base + "JitterVSTime";
-  std::string graphicsFileName3        = jitter + ".eps";
-  std::string plotFileName3            = jitter + ".dat";
-  //std::string plotTitle3               = "Jitter vs Time";
-  // std::string dataTitle3               = "Jitter";
-  Gnuplot gnuplot3 (graphicsFileName3);
-  // gnuplot3.SetTitle (plotTitle3);
-  //gnuplot3.SetTerminal ("png");
-  // gnuplot3.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
-  // gnuplot3.SetLegend ("Time(seconds)", "Jitter(seconds)");
-  //gnuplot3.AppendExtra ("set xrange [10:35]");
-  Gnuplot2dDataset dataset3;
-  //dataset3.SetTitle (dataTitle3);
-  // dataset3.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-  //dataset3.SetErrorBars (Gnuplot2dDataset::XY);
-  */
+
 
 /*-----------------------------------------------------*/
+
+  // 根据应用类型设置输出文件后缀名
+  SetOutput(nApplicationType);
+
   // 测吞吐量, 延时, 丢包, 抖动
   ThroughputMonitor (&flowmon, monitor, dataset);
   DelayMonitor      (&flowmon, monitor, dataset1);
@@ -839,10 +825,12 @@ CommandSetup (int argc, char **argv)
 
   cmd.AddValue ("SamplingPeriod", "Sampling period", nSamplingPeriod);
   cmd.AddValue ("stopTime", "The time to stop", stopTime);
+
+  cmd.AddValue ("ApplicationType", "Choose application to run, tcp-onoff(1), tcp-bulk(2), or udp(3)", nApplicationType);
   
   /* for udp-server-client application */
   // cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
-  // cmd.AddValue ("Interval", "The interval between two packet sent", nInterval);
+  // cmd.AddValue ("Interval", "The interval between two packet sent", nUdpInterval);
   // cmd.AddValue ("PacketSize", "The size in byte of each packet", nUdpPacketSize);
 
 
@@ -853,6 +841,40 @@ CommandSetup (int argc, char **argv)
   return true;
 }
 
+
+
+void
+SetOutput (uint32_t application_type)
+{
+  
+  // 设置文件名后缀
+  switch (application_type)
+  {
+    case APP_TCP_ONOFF:
+    {
+      plotFileName            =  throu + "_tcp.dat";
+      plotFileName1          = delay +  "_tcp.dat";
+      plotFileName2          = lost    +  "_tcp.dat";
+      break;
+    }
+    case APP_TCP_BULK:
+    {
+      plotFileName            =  throu + "_tcp.dat";
+      plotFileName1          = delay +  "_tcp.dat";
+      plotFileName2          = lost    +  "_tcp.dat";
+      break;
+    }
+    case APP_UDP:
+    {
+      plotFileName            =  throu + "_udp.dat";
+      plotFileName1          = delay +  "_udp.dat";
+      plotFileName2          = lost    +  "_udp.dat";
+      break;
+    }
+
+  }
+
+}
 
 /*
  * Calculate Throughput using Flowmonitor
@@ -966,7 +988,10 @@ LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Gnuplot2dDataset dataset2)
 {
   
+  // uint32_t TxPacketsum = 0;
+  uint32_t RxPacketsum = 0;
   uint32_t LostPacketsum = 0;
+  double LostPacketRatio = 0.0;
 
   monitor->CheckForLostPackets ();
   std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
@@ -975,8 +1000,15 @@ LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
     {
 
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-
+    
+    // TxPacketsum   = i->second.txPackets;
+    RxPacketsum   = i->second.rxPackets;
     LostPacketsum = i->second.lostPackets;
+
+    if (LostPacketsum + RxPacketsum != 0)
+    {
+      LostPacketRatio = (double)LostPacketsum / (LostPacketsum + RxPacketsum) * 100;
+    }
 
     if (t.sourceAddress==clientIp && t.destinationAddress == serverIp)
       {
@@ -984,7 +1016,7 @@ LostPacketsMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
         // TCP_PORT_NUMBER = 6
           if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
           {
-            dataset2.Add (Simulator::Now().GetSeconds(), LostPacketsum);
+            dataset2.Add (Simulator::Now().GetSeconds(), LostPacketRatio);
           }
           else
           {
@@ -1049,6 +1081,8 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
   uint32_t RxPacketsum = 0;
   uint32_t DropPacketsum = 0;
   uint32_t LostPacketsum = 0;
+  double LostPacketRatio = 0.0;
+
   double Delaysum  = 0;
   double JitterSum = 0;
 
@@ -1068,6 +1102,11 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
     TxPacketsum   = i->second.txPackets;
     RxPacketsum   = i->second.rxPackets;
     LostPacketsum = i->second.lostPackets;
+
+    if (LostPacketsum + RxPacketsum)
+    {
+      LostPacketRatio = LostPacketsum / (LostPacketsum + RxPacketsum);
+    }
     DropPacketsum = i->second.packetsDropped.size();
     Delaysum      = i->second.delaySum.GetSeconds();
     JitterSum     = i->second.jitterSum.GetSeconds();
@@ -1089,20 +1128,11 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
             std::cout<< "Rx Packets = " << RxPacketsum << std::endl;
             std::cout<< "Throughput: "<< tempThroughput <<" Kbps" << std::endl;
             std::cout<< "Delay: " << Delaysum/ RxPacketsum * 1000 << " ms" << std::endl;   // 延时单位为ms
-            std::cout<< "LostPackets: " << LostPacketsum << std::endl;
+            std::cout<< "Packets loss radio: " << LostPacketRatio * 100 << "%" << std::endl;
             std::cout<< "Jitter: " << JitterSum/ (RxPacketsum - 1) << std::endl;
             std::cout << "Dropped Packets: " << DropPacketsum << std::endl;
-            std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
+            // std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
             std::cout<<"------------------------------------------" << std::endl;
-
-            std::cout<<"[debug] i->second.txBytes " << i->second.txBytes << std::endl;
-            std::cout<<"[debug] i->second.rxBytes " << i->second.rxBytes << std::endl;
-            std::cout<<"[debug] i->second.timeFirstTxPacket.GetSeconds() " << i->second.timeFirstTxPacket.GetSeconds() << std::endl;
-            std::cout<<"[debug] i->second.timeLastRxPacket.GetSeconds() "  << i->second.timeLastRxPacket.GetSeconds()  << std::endl;
-            std::cout<<"[debug] i->second.packetsDropped.size() "          << i->second.packetsDropped.size()          << std::endl;
-            std::cout<<"[debug] i->second.lostPackets "                    << i->second.lostPackets                    << std::endl;
-            std::cout<<"[debug] i->second.delaySum.GetSeconds() "          << i->second.delaySum.GetSeconds()          << std::endl;
-            std::cout<<"[debug] i->second.jitterSum.GetSeconds() "         << i->second.jitterSum.GetSeconds()         << std::endl;
 
 
 
@@ -1114,7 +1144,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
       }
     }
   // 每隔一秒打印一次
-  Simulator::Schedule(Seconds(1), &PrintParams, fmhelper, monitor);
+  Simulator::Schedule(Seconds(nSamplingPeriod), &PrintParams, fmhelper, monitor);
 
 }
 
