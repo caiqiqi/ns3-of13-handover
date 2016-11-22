@@ -530,7 +530,7 @@ main (int argc, char *argv[])
 
   if (nApplicationType == APP_UDP )
   {
-      /*
+      
       // UDP server
       UdpServerHelper server (port);  // for the server side, only one param(port) is specified
       // for node 6
@@ -563,8 +563,9 @@ main (int argc, char *argv[])
     
       clientApps.Start (Seconds(startTime));  
       clientApps.Stop (Seconds(stopTime));
-      */
+      
 
+      /*
       // UDP server
       PacketSinkHelper sink ("ns3::UdpSocketFactory",
                              InetSocketAddress (Ipv4Address::GetAny (), port));
@@ -579,8 +580,9 @@ main (int argc, char *argv[])
       {
           OnOffHelper ap1OnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
                                   InetSocketAddress (h1h2Interface.GetAddress(1), port));
-          ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-          ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap1OnOffHelper.SetConstantRate (DataRate ("50kb/s"));
+          // ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          // ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
           ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
           ap1OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
           
@@ -592,8 +594,9 @@ main (int argc, char *argv[])
       {
           OnOffHelper ap2OnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
                                   InetSocketAddress (h1h2Interface.GetAddress(1), port));
-          ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-          ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap2OnOffHelper.SetConstantRate (DataRate ("50kb/s"));
+          // ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          // ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
           ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
           ap2OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
           
@@ -603,12 +606,14 @@ main (int argc, char *argv[])
       // 给移动的STA加上 OnOffApplication
       OnOffHelper staOnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
                                   InetSocketAddress (h1h2Interface.GetAddress(1), port));
-      staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-      staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+      staOnOffHelper.SetConstantRate (DataRate ("50kb/s"));
+      // staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+      // staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
       staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
       staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
     
       clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
+      */
   }
 
   if (nApplicationType == APP_TCP_ONOFF )
@@ -1157,7 +1162,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
 
     if (LostPacketsum + RxPacketsum)
     {
-      LostPacketRatio = LostPacketsum / (LostPacketsum + RxPacketsum);
+      LostPacketRatio = (double)LostPacketsum / (LostPacketsum + RxPacketsum) * 100;
     }
     DropPacketsum = i->second.packetsDropped.size();
     Delaysum      = i->second.delaySum.GetSeconds();
@@ -1180,7 +1185,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
             std::cout<< "Rx Packets = " << RxPacketsum << std::endl;
             std::cout<< "Throughput: "<< tempThroughput <<" Kbps" << std::endl;
             std::cout<< "Delay: " << Delaysum/ RxPacketsum * 1000 << " ms" << std::endl;   // 延时单位为ms
-            std::cout<< "Packets loss radio: " << LostPacketRatio * 100 << "%" << std::endl;
+            std::cout<< "Packets loss radio: " << LostPacketRatio  << "%" << std::endl;
             std::cout<< "Jitter: " << JitterSum/ (RxPacketsum - 1) << std::endl;
             std::cout << "Dropped Packets: " << DropPacketsum << std::endl;
             // std::cout << "Packets Delivery Ratio: " << ( RxPacketsum * 100 / TxPacketsum) << "%" << std::endl;
