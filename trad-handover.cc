@@ -50,6 +50,7 @@ const uint32_t APP_TCP_BULK    = 2;
 const uint32_t APP_UDP               = 3;
 
 
+uint32_t lastRxPacketsum = 0;
 double lastThrou   = 0.0;
 
 bool tracing  = true;
@@ -529,6 +530,7 @@ main (int argc, char *argv[])
 
   if (nApplicationType == APP_UDP )
   {
+      /*
       // UDP server
       UdpServerHelper server (port);  // for the server side, only one param(port) is specified
       // for node 6
@@ -561,56 +563,53 @@ main (int argc, char *argv[])
     
       clientApps.Start (Seconds(startTime));  
       clientApps.Stop (Seconds(stopTime));
-  }
+      */
 
-
-  if (nApplicationType == APP_TCP_BULK )
-  {
-      // TCP server
-      PacketSinkHelper sink ("ns3::TcpSocketFactory",
+      // UDP server
+      PacketSinkHelper sink ("ns3::UdpSocketFactory",
                              InetSocketAddress (Ipv4Address::GetAny (), port));
       ApplicationContainer sinkApps = sink.Install (hostsNode.Get(1));
-      sinkApps.Start (Seconds (serverStartTime));
+      sinkApps.Start (Seconds (1.0));
       sinkApps.Stop (Seconds(stopTime));
-    
-      
-      // TCP client BulkSenderApplication
-    
-      // 给3 个AP1 的stations 加上 BulkSender
+
+      // UDP client OnOffApplication
+      ApplicationContainer clientApps;
+      // 给3 个AP1 的stations 加上 OnOffApplication
       for (uint32_t i = 0; i < nAp1Station; i++)
       {
-        BulkSendHelper ap1Source ("ns3::TcpSocketFactory",
-                             InetSocketAddress (h1h2Interface.GetAddress(1), port)); // 服务器的IP
-        // Set the amount of data to send in bytes.  Zero is unlimited.
-        ap1Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-        ApplicationContainer ap1sourceApps = ap1Source.Install (staWifiNodes[0].Get(i));  // AP1内的第 i 个STA
-        ap1sourceApps.Start (Seconds (startTime));
-        ap1sourceApps.Stop (Seconds (stopTime));
+          OnOffHelper ap1OnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
+                                  InetSocketAddress (h1h2Interface.GetAddress(1), port));
+          ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
+          ap1OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+          
+          clientApps.Add( ap1OnOffHelper.Install (staWifiNodes[0].Get(i)) );
       }
     
-    
-      // 给20 个AP2 的stations 加上 BulkSender
+      // 给20 个AP2 的stations 加上 OnOffApplication
       for (uint32_t i = 0; i < nAp2Station; i++)
       {
-        BulkSendHelper ap2Source ("ns3::TcpSocketFactory",
-                             InetSocketAddress (h1h2Interface.GetAddress(1), port));  // 服务器的IP
-        // Set the amount of data to send in bytes.  Zero is unlimited.
-        ap2Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-        ApplicationContainer ap2sourceApps = ap2Source.Install (staWifiNodes[1].Get(i));  // AP2内的第 i 个STA
-        ap2sourceApps.Start (Seconds (startTime));
-        ap2sourceApps.Stop (Seconds (stopTime));
+          OnOffHelper ap2OnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
+                                  InetSocketAddress (h1h2Interface.GetAddress(1), port));
+          ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
+          ap2OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+          
+          clientApps.Add( ap2OnOffHelper.Install (staWifiNodes[1].Get(i)) );
       }
-      
-      // the moving station 
-      BulkSendHelper source ("ns3::TcpSocketFactory",
-                             InetSocketAddress (h1h2Interface.GetAddress(1), port));
-      // Set the amount of data to send in bytes.  Zero is unlimited.
-      source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
-      ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
-      sourceApps.Start (Seconds (startTime));
-      sourceApps.Stop (Seconds (stopTime));
+    
+      // 给移动的STA加上 OnOffApplication
+      OnOffHelper staOnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
+                                  InetSocketAddress (h1h2Interface.GetAddress(1), port));
+      staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+      staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+      staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
+      staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
+    
+      clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
   }
-
 
   if (nApplicationType == APP_TCP_ONOFF )
   {
@@ -660,6 +659,55 @@ main (int argc, char *argv[])
     
       clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
   }
+
+  if (nApplicationType == APP_TCP_BULK )
+  {
+      // TCP server
+      PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                             InetSocketAddress (Ipv4Address::GetAny (), port));
+      ApplicationContainer sinkApps = sink.Install (hostsNode.Get(1));
+      sinkApps.Start (Seconds (serverStartTime));
+      sinkApps.Stop (Seconds(stopTime));
+    
+      
+      // TCP client BulkSenderApplication
+    
+      // 给3 个AP1 的stations 加上 BulkSender
+      for (uint32_t i = 0; i < nAp1Station; i++)
+      {
+        BulkSendHelper ap1Source ("ns3::TcpSocketFactory",
+                             InetSocketAddress (h1h2Interface.GetAddress(1), port)); // 服务器的IP
+        // Set the amount of data to send in bytes.  Zero is unlimited.
+        ap1Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+        ApplicationContainer ap1sourceApps = ap1Source.Install (staWifiNodes[0].Get(i));  // AP1内的第 i 个STA
+        ap1sourceApps.Start (Seconds (startTime));
+        ap1sourceApps.Stop (Seconds (stopTime));
+      }
+    
+    
+      // 给20 个AP2 的stations 加上 BulkSender
+      for (uint32_t i = 0; i < nAp2Station; i++)
+      {
+        BulkSendHelper ap2Source ("ns3::TcpSocketFactory",
+                             InetSocketAddress (h1h2Interface.GetAddress(1), port));  // 服务器的IP
+        // Set the amount of data to send in bytes.  Zero is unlimited.
+        ap2Source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+        ApplicationContainer ap2sourceApps = ap2Source.Install (staWifiNodes[1].Get(i));  // AP2内的第 i 个STA
+        ap2sourceApps.Start (Seconds (startTime));
+        ap2sourceApps.Stop (Seconds (stopTime));
+      }
+      
+      // the moving station 
+      BulkSendHelper source ("ns3::TcpSocketFactory",
+                             InetSocketAddress (h1h2Interface.GetAddress(1), port));
+      // Set the amount of data to send in bytes.  Zero is unlimited.
+      source.SetAttribute ("MaxBytes", UintegerValue (nMaxBytes));
+      ApplicationContainer sourceApps = source.Install (staWifiNodes[2].Get(0));    // AP3内的第 0 个STA
+      sourceApps.Start (Seconds (startTime));
+      sourceApps.Stop (Seconds (stopTime));
+  }
+
+
   
 
 
@@ -890,7 +938,9 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Gnuplot2dDataset dataset)
 {
   
+  uint32_t tmpRxPacketsum = 0;
   double tmpThrou ;
+
   monitor->CheckForLostPackets ();
   std::map<FlowId, FlowMonitor::FlowStats> flowStats = monitor->GetFlowStats ();
   /* since fmhelper is a pointer, we should use it as a pointer.
@@ -899,9 +949,11 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
   for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = flowStats.begin (); i != flowStats.end (); ++i)
     {
-            tmpThrou   = i->second.rxBytes * 8.0 / 
-              (i->second.timeLastRxPacket.GetSeconds() - 
-                i->second.timeFirstTxPacket.GetSeconds())/1024 ;
+      
+      tmpRxPacketsum = i->second.rxPackets;
+      tmpThrou   = i->second.rxBytes * 8.0 / 
+        (i->second.timeLastRxPacket.GetSeconds() - 
+          i->second.timeFirstTxPacket.GetSeconds())/1024 ;
 
     /* 每个flow是根据包的五元组(协议，源IP/端口，目的IP/端口)来区分的 */
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
@@ -912,17 +964,17 @@ ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
         // TCP_PORT_NUMBER = 6
           if (17 == unsigned(t.protocol) || 6 == unsigned(t.protocol))
           {
-            // 第一次lastThrou 的值为0
-            if (lastThrou == 0)
+            // 第一次lastRxPacketsum 的值为0
+            if (lastRxPacketsum == 0)
             {
               dataset.Add  (Simulator::Now().GetSeconds(), tmpThrou);
-              lastThrou = tmpThrou;
+              lastRxPacketsum = tmpRxPacketsum;
             }
-            else // 第一次调用的时候 lastThrou还是0.0; 之后只要 tmpThrou 不等于 lastThrou, 即吞吐量有变化(不管变大还是变小)都将这个值加入dataSet中
-              if ( tmpThrou - lastThrou)
+            else //之后只要 tmpRxPacketsum 不等于 lastRxPacketsum, 即接收到的包数量有变化，说明说收到了新的包，将这时的吞吐量加入dataSet中
+              if ( tmpRxPacketsum - lastRxPacketsum)
               {
                 dataset.Add  (Simulator::Now().GetSeconds(), tmpThrou);
-                lastThrou = tmpThrou ;
+                lastRxPacketsum = tmpRxPacketsum ;
               }
               // 否则吞吐量为0 
               else
