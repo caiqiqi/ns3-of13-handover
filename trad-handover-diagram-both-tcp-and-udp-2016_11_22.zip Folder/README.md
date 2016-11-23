@@ -1,10 +1,10 @@
-## Sampling period
+## Parameters
+
+### Sampling period
 Since if I set the sampling period too long, there will be not enough points in the diagram for us to
 observe the handover process. If I set the sampling period too short. There will be more points dropping to zero in the diagram,
 making us confused about the actual handover process and other irrelavant time. So I choose the `0.8s` version,
 which is more clear to observe.
-
-## Parameters
 
 ### Moving station and AP
 The maximum range that the AP's signal is able to cover is 100m.
