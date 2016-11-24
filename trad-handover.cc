@@ -46,8 +46,8 @@ using namespace ns3;
 uint32_t nApplicationType = 0;
 
 const uint32_t APP_TCP_ONOFF = 1;
-const uint32_t APP_TCP_BULK    = 2;
-const uint32_t APP_UDP               = 3;
+const uint32_t APP_TCP_BULK  = 2;
+const uint32_t APP_UDP       = 3;
 
 
 uint32_t lastRxPacketsum = 0;
@@ -209,20 +209,7 @@ main (int argc, char *argv[])
   /* 调用YansWifiChannelHelper::Default() 已经添加了默认的传播损耗模型, 下面不要再手动添加 */
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
   Ptr<YansWifiChannel> yansWifiChannel = wifiChannel.Create();
-  ////////////////////////////////////////
-  ////////////// LOSS MODEL //////////////
-  ////////////////////////////////////////
 
-  /* 
-   * `FixedRssLossModel` will cause the `rss to be fixed` regardless
-   * of the distance between the two stations, and the transmit power 
-   *
-   *
-   *
-   *
-   *
-   *
-   */
   /* 传播延时速度是恒定的  */
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
   /* 很多地方都用这个，不知道什么意思  */
@@ -346,10 +333,10 @@ main (int argc, char *argv[])
     switchDevices[0]. Add(link.Get(1));
   }
 
+  /* #3 Connect host1 and host2 to traditonal switch2  */
   // 别忘了这里也要设置csma的link参数，否则会沿用上一个30Mbps的值
   csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
   csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
-  /* #3 Connect host1 and host2 to traditonal switch2  */
   for (uint32_t i = 0; i < nHost; i++)
   {
     link = csma.Install (NodeContainer(hostsNode.Get(i), switchesNode.Get(1)));   // Get(1) for switch2
@@ -528,7 +515,7 @@ main (int argc, char *argv[])
     return 1;
   }
 
-  if (nApplicationType == APP_UDP )
+  else if (nApplicationType == APP_UDP )
   {
       
       // UDP server
@@ -565,7 +552,7 @@ main (int argc, char *argv[])
       clientApps.Stop (Seconds(stopTime));
       
 
-      /*
+      /* 吞吐量太低
       // UDP server
       PacketSinkHelper sink ("ns3::UdpSocketFactory",
                              InetSocketAddress (Ipv4Address::GetAny (), port));
@@ -616,7 +603,7 @@ main (int argc, char *argv[])
       */
   }
 
-  if (nApplicationType == APP_TCP_ONOFF )
+  else if (nApplicationType == APP_TCP_ONOFF )
   {
       
       // TCP server
@@ -665,7 +652,7 @@ main (int argc, char *argv[])
       clientApps.Add( staOnOffHelper.Install (staWifiNodes[2].Get(0)) );
   }
 
-  if (nApplicationType == APP_TCP_BULK )
+  else if (nApplicationType == APP_TCP_BULK )
   {
       // TCP server
       PacketSinkHelper sink ("ns3::TcpSocketFactory",
@@ -882,9 +869,9 @@ CommandSetup (int argc, char **argv)
   cmd.AddValue ("ApplicationType", "Choose application to run, tcp-onoff(1), tcp-bulk(2), or udp(3)", nApplicationType);
   
   /* for udp-server-client application */
-  // cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
-  // cmd.AddValue ("Interval", "The interval between two packet sent", nUdpInterval);
-  // cmd.AddValue ("PacketSize", "The size in byte of each packet", nUdpPacketSize);
+  cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
+  cmd.AddValue ("Interval", "The interval between two packet sent", nUdpInterval);
+  cmd.AddValue ("PacketSize", "The size in byte of each packet", nUdpPacketSize);
 
 
   cmd.AddValue ("rtslimit", "The size of packets under which there should be RST/CST", rtslimit);
@@ -1151,11 +1138,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
       // A tuple: Source-ip, destination-ip, protocol, source-port, destination-port
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
     
-    //TODO              
-    // TxBytesum     = i->second.txBytes;   // 当前已发送的字节数
-    // RxBytesum     = i->second.rxBytes;   // 当前已收到的字节数
 
-    //TimeLastRxPacket   = 
     TxPacketsum   = i->second.txPackets;
     RxPacketsum   = i->second.rxPackets;
     LostPacketsum = i->second.lostPackets;
