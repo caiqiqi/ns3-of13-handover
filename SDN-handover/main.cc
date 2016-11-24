@@ -81,7 +81,7 @@ double nSamplingPeriod = 0.8;   // 抽样间隔，根据总的Simulation时间�
 
 
 /* for udp-server-client application. */
-uint32_t nMaxPackets = 20000;    // The maximum packets to be sent.
+uint32_t nMaxPackets = 200000;    // The maximum packets to be sent.随着Node数增加之前的20000个packets不够了
 double nUdpInterval  = 0.5;  // The interval between two packet sent.
 uint32_t nUdpPacketSize = 1024;
 
