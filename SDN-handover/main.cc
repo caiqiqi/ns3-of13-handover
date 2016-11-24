@@ -72,8 +72,8 @@ double stopTime = 40.0;  // when the simulation stops
 uint32_t nAp         = 3;
 uint32_t nSwitch     = 2;
 uint32_t nHost       = 2;
-uint32_t nAp1Station = 20;    // 使AP2过载
-uint32_t nAp2Station = 4;
+uint32_t nAp1Station = 3;
+uint32_t nAp2Station = 20;    // 使AP2过载
 uint32_t nAp3Station = 1;
 
 
@@ -82,7 +82,7 @@ double nSamplingPeriod = 0.8;   // 抽样间隔，根据总的Simulation时间�
 
 /* for udp-server-client application. */
 uint32_t nMaxPackets = 20000;    // The maximum packets to be sent.
-double nUdpInterval  = 0.2;  // The interval between two packet sent.
+double nUdpInterval  = 0.5;  // The interval between two packet sent.
 uint32_t nUdpPacketSize = 1024;
 
 /* for tcp-bulk-send application. */   
@@ -136,10 +136,14 @@ Gnuplot2dDataset dataset2;
 
 ////////////////////// 函数声明 ///////////////////
 bool CommandSetup(int argc, char **argv);
-
 // 设置文件输出后缀名
 void
 SetOutput (uint32_t application_type);
+
+
+void Assoc (std::string context, Mac48Address maddr);  // Associate时回调
+void DeAssoc (std::string context, Mac48Address maddr);  // DeAssociate时回调
+
 
 void ThroughputMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor, 
   Gnuplot2dDataset dataset);
@@ -199,7 +203,7 @@ main (int argc, char *argv[])
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
   */
-  Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));
+  // Config::SetDefault ("ns3::RangePropagationLossModel::MaxRange", DoubleValue (MaxRange));
   /* 设置命令行参数 */
   CommandSetup (argc, argv) ;
 
@@ -228,7 +232,7 @@ main (int argc, char *argv[])
   //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
   /* 不管发送功率是多少，都返回一个恒定的接收功率  */
   //wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
-  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
+  wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel", "MaxRange", DoubleValue (MaxRange));
   // 一个给AP，一个给STA
   YansWifiPhyHelper wifiPhyAP = YansWifiPhyHelper::Default();
   YansWifiPhyHelper wifiPhySTA = YansWifiPhyHelper::Default();
@@ -383,15 +387,21 @@ main (int argc, char *argv[])
 
   // ------------------- 配置AP --------------------
   wifiMacAP.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid));
+                   "Ssid", SsidValue (ssid)
+                   // ,"BeaconGeneration", BooleanValue (true)  // 应该默认是true吧
+                   //,"BeaconInterval", TimeValue (NanoSeconds (102400000)) // 即124ms
+                   );
   wifiPhyAP.Set("TxPowerStart", DoubleValue(ap1TxPwr));
   wifiPhyAP.Set("TxPowerEnd",   DoubleValue(ap1TxPwr));
   apWifiDevices[0]   = wifi.Install(wifiPhyAP, wifiMacAP, ap1WifiNode);
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (1 % 3) * 5));    // 6  
-  wifiMacAP.SetType ("ns3::ApWifiMac", 
-                   "Ssid", SsidValue (ssid));
+  wifiMacAP.SetType ("ns3::ApWifiMac",
+                   // ,"BeaconGeneration", BooleanValue (true)  // 应该默认是true吧
+                   //,"BeaconInterval", TimeValue (NanoSeconds (102400000)) // 即124ms
+                   "Ssid", SsidValue (ssid)
+                   );
   wifiPhyAP.Set("TxPowerStart", DoubleValue(ap2TxPwr));
   wifiPhyAP.Set("TxPowerEnd",   DoubleValue(ap2TxPwr));
 
@@ -399,7 +409,9 @@ main (int argc, char *argv[])
 
 
   //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (2 % 3) * 5));    // 11
-  wifiMacAP.SetType ("ns3::ApWifiMac", 
+  wifiMacAP.SetType ("ns3::ApWifiMac",
+                  // ,"BeaconGeneration", BooleanValue (true)  // 应该默认是true吧
+                  //,"BeaconInterval", TimeValue (NanoSeconds (102400000)) // 即124ms
                    "Ssid", SsidValue (ssid));
   wifiPhyAP.Set("TxPowerStart", DoubleValue(ap3TxPwr));
   wifiPhyAP.Set("TxPowerEnd",   DoubleValue(ap3TxPwr));
@@ -473,7 +485,8 @@ main (int argc, char *argv[])
   
   /* 这是一个用来创建和配置一个包含单个controller和多个switch的 OpenFlow 1.3 网络的helper */
   Ptr<OFSwitch13Helper> of13Helper = CreateObject<OFSwitch13Helper> ();
-  of13Helper->SetChannelType (OFSwitch13Helper::DEDICATEDCSMA);
+  // 前面已经配置了全局的，所以这里不需要了
+  // of13Helper->SetChannelType (OFSwitch13Helper::DEDICATEDCSMA);
 
   /*
   // LearningController   //// 这样在STA从AP1切换到AP2的时候controller会报错 "Inconsistent L2 switching table"
@@ -839,6 +852,21 @@ main (int argc, char *argv[])
   //anim.EnablePacketMetadata();   // to see the details of each packet
 
 
+  /* 对所有STA监控其 Association 和 DeAssocation 的过程  */
+  NS_LOG_UNCOND ("--------Tracing Association and DeAssociation.--------");
+  std::ostringstream oss_assoc, oss_deassoc;
+  // 只需要监控Node 30(即moving STA的Association和DeAssociation状态)
+  oss_assoc <<
+      "/NodeList/30" <<
+      "/DeviceList/0" <<
+      "/$ns3::WifiNetDevice/Mac/$ns3::StaWifiMac/Assoc";
+  Config::Connect (oss_assoc.str (), MakeCallback (&Assoc));
+  oss_deassoc <<
+      "/NodeList/30" <<
+      "/DeviceList/0" <<
+      "/$ns3::WifiNetDevice/Mac/$ns3::StaWifiMac/DeAssoc";
+  Config::Connect (oss_deassoc.str (), MakeCallback (&DeAssoc));
+
   NS_LOG_UNCOND ("------------Preparing for Checking all the params.------------");
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll();
@@ -869,7 +897,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND ("------------Running Simulation.------------");
   Simulator::Run ();
 
-  
+
   NS_LOG_UNCOND ("------------Simulation Done.------------");
   //Throughput
   gnuplot.AddDataset (dataset);
@@ -962,6 +990,23 @@ SetOutput (uint32_t application_type)
 
   }
 
+}
+
+
+
+void Assoc (std::string context, Mac48Address maddr)
+{
+  NS_LOG_UNCOND ("At time " << Simulator::Now ().GetSeconds () <<
+    "s " << context <<
+    " Associated with access point " << maddr);
+}
+
+
+void DeAssoc (std::string context, Mac48Address maddr)
+{
+  NS_LOG_UNCOND ("At time " << Simulator::Now ().GetSeconds () <<
+    "s " << context <<
+    " Association with access point " << maddr << " lost");
 }
 
 /*
