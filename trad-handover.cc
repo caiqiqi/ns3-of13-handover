@@ -72,7 +72,7 @@ double nSamplingPeriod = 0.8;   // 抽样间隔，根据总的Simulation时间�
 
 
 /* for udp-server-client application. */
-uint32_t nMaxPackets = 20000;    // The maximum packets to be sent.
+uint32_t nUdpMaxPackets = 20000;    // The maximum packets to be sent.
 double nUdpInterval  = 0.2;  // The interval between two packet sent.
 uint32_t nUdpPacketSize = 1024;
 
@@ -528,27 +528,35 @@ main (int argc, char *argv[])
     
       // UDP client
       ApplicationContainer clientApps;
-    
-      UdpClientHelper client (h1h2Interface.GetAddress(1) ,port);   // stasWifi2Interface.GetAddress(0)
-      client.SetAttribute ("MaxPackets", UintegerValue (nMaxPackets));
-      client.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
-      client.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
-
 
       // 给3 个AP1 的stations 加上 UdpClient
       for (uint32_t i =0; i < nAp1Station; i++)
       {
-          clientApps. Add( client.Install(staWifiNodes[0].Get(i)) ) ;
+        UdpClientHelper clientHelper (h1h2Interface.GetAddress(1) ,port);
+        clientHelper.SetAttribute ("UdpMaxPackets", UintegerValue (nUdpMaxPackets));
+        clientHelper.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+        clientHelper.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+        clientApps. Add( clientHelper.Install(staWifiNodes[0].Get(i)) ) ;
       }
       // 给20 个AP2 的stations 加上 UdpClient
       for (uint32_t i =0; i < nAp2Station; i++)
       {
-        clientApps. Add( client.Install(staWifiNodes[1].Get(i)) ) ;
+        UdpClientHelper clientHelper (h1h2Interface.GetAddress(1) ,port);
+        clientHelper.SetAttribute ("UdpMaxPackets", UintegerValue (nUdpMaxPackets));
+        clientHelper.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+        clientHelper.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+        clientApps. Add( clientHelper.Install(staWifiNodes[1].Get(i)) ) ;
       }
-      // The moving station
-      clientApps. Add( client.Install(staWifiNodes[2].Get(0)) ) ;
+      
+      // 给The moving station加上 UdpClient
+      UdpClientHelper clientHelper (h1h2Interface.GetAddress(1) ,port);
+      clientHelper.SetAttribute ("UdpMaxPackets", UintegerValue (nUdpMaxPackets));
+      clientHelper.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+      clientHelper.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+      clientApps. Add( clientHelper.Install(staWifiNodes[2].Get(0)) ) ;
     
-      clientApps.Start (Seconds(startTime));  
+
+      clientApps.Start (Seconds(startTime));
       clientApps.Stop (Seconds(stopTime));
       
 
@@ -869,7 +877,7 @@ CommandSetup (int argc, char **argv)
   cmd.AddValue ("ApplicationType", "Choose application to run, tcp-onoff(1), tcp-bulk(2), or udp(3)", nApplicationType);
   
   /* for udp-server-client application */
-  cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
+  cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nUdpMaxPackets);
   cmd.AddValue ("Interval", "The interval between two packet sent", nUdpInterval);
   cmd.AddValue ("PacketSize", "The size in byte of each packet", nUdpPacketSize);
 

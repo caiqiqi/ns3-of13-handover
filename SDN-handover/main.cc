@@ -64,6 +64,7 @@ uint32_t lastRxPacketsum = 0;
 double lastThrou   = 0.0;
 
 bool tracing  = true;
+bool enableRtsCts = false;
 
 double serverStartTime = 1.0;
 double startTime = 1.001;
@@ -81,8 +82,8 @@ double nSamplingPeriod = 0.8;   // 抽样间隔，根据总的Simulation时间�
 
 
 /* for udp-server-client application. */
-uint32_t nMaxPackets = 200000;    // The maximum packets to be sent.随着Node数增加之前的20000个packets不够了
-double nUdpInterval  = 0.5;  // The interval between two packet sent.
+uint32_t nUdpMaxPackets = 20000;    // The maximum packets to be sent.随着Node数增加之前的20000个packets不够了
+double nUdpInterval  = 0.2;  // The interval between two packet sent.
 uint32_t nUdpPacketSize = 1024;
 
 /* for tcp-bulk-send application. */   
@@ -198,7 +199,15 @@ main (int argc, char *argv[])
   相应的CTS会回应之前的RTS。一般都是AP发送CTS数据，而Station发送RTS数据。
   这里设置为1500，表示1500字节以上的frame要进行RTS/CTS机制
   */
-  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold",UintegerValue (rtslimit));
+  // Turn RTS/CTS on/off for all frames
+  if (! enableRtsCts) 
+  {
+      Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("2200"));
+  }
+  else
+  {
+      Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
+  }
   /* 
   x^2 = 20^2 + 50^ => 50 < x < 60
   设置最大WIFI覆盖距离为50m(这样一个STA在与某个AP断开连接到与下一个AP连接上的时间之间会有一个间隔时间), 超出这个距离之后将无法传输WIFI信号 
@@ -246,7 +255,9 @@ main (int argc, char *argv[])
   /* The SetRemoteStationManager method tells the helper the type of `rate control algorithm` to use. 
    * Here, it is asking the helper to use the AARF algorithm
    */
-  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+  // wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("OfdmRate18Mbps"));
   wifi.SetStandard (WIFI_PHY_STANDARD_80211g);  
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);   // 貌似只能在ns-3.25支持
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
@@ -584,7 +595,7 @@ main (int argc, char *argv[])
 /*  判断应用类型，TCP bulk 还是 TCP onoff , 还是UDP  */
   if (nApplicationType == 0)
   {
-    std::cout << "[!] Please choose application to run! '--nApplicationType='  tcp-onoff(1), tcp-bulk(2) or udp(3)" << std::endl;
+    std::cout << "[!] Please choose application to run! '--ApplicationType='  tcp-onoff(1), tcp-bulk(2) or udp(3)" << std::endl;
     return 1;
   }
 
@@ -600,32 +611,49 @@ main (int argc, char *argv[])
       
     
       // UDP client
-      ApplicationContainer clientApps;
-    
-      UdpClientHelper client (h1h2Interface.GetAddress(1) ,port);   // stasWifi2Interface.GetAddress(0)
-      client.SetAttribute ("MaxPackets", UintegerValue (nMaxPackets));
-      client.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
-      client.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
-
 
       // 给3 个AP1 的stations 加上 UdpClient
       for (uint32_t i =0; i < nAp1Station; i++)
       {
-          clientApps. Add( client.Install(staWifiNodes[0].Get(i)) ) ;
+        UdpClientHelper clientHelper (h1h2Interface.GetAddress(1) ,port);
+        clientHelper.SetAttribute ("MaxPackets", UintegerValue (nUdpMaxPackets));
+        clientHelper.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+        clientHelper.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+
+        ApplicationContainer clientApps;
+        clientApps. Add( clientHelper.Install(staWifiNodes[0].Get(i)) ) ;
+        clientApps.Start (Seconds(startTime + 0.01));
+        clientApps.Stop (Seconds(stopTime));      
       }
       // 给20 个AP2 的stations 加上 UdpClient
       for (uint32_t i =0; i < nAp2Station; i++)
       {
-        clientApps. Add( client.Install(staWifiNodes[1].Get(i)) ) ;
+        UdpClientHelper clientHelper (h1h2Interface.GetAddress(1) ,port);
+        clientHelper.SetAttribute ("MaxPackets", UintegerValue (nUdpMaxPackets));
+        clientHelper.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+        clientHelper.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+        
+        ApplicationContainer clientApps;
+        clientApps. Add( clientHelper.Install(staWifiNodes[1].Get(i)) ) ;
+        clientApps.Start (Seconds(startTime + 0.1));
+        clientApps.Stop (Seconds(stopTime));
       }
-      // The moving station
-      clientApps. Add( client.Install(staWifiNodes[2].Get(0)) ) ;
-    
-      clientApps.Start (Seconds(startTime));  
+      
+      // 给The moving station加上 UdpClient
+      ApplicationContainer clientApps;
+
+      UdpClientHelper clientHelper (h1h2Interface.GetAddress(1) ,port);
+      clientHelper.SetAttribute ("MaxPackets", UintegerValue (nUdpMaxPackets));
+      clientHelper.SetAttribute ("Interval", TimeValue (Seconds(nUdpInterval)));  
+      clientHelper.SetAttribute ("PacketSize", UintegerValue (nUdpPacketSize));
+      
+      clientApps. Add( clientHelper.Install(staWifiNodes[2].Get(0)) ) ;
+      clientApps.Start (Seconds(startTime + 0.3));
       clientApps.Stop (Seconds(stopTime));
       
 
-      /* 吞吐量太低
+      /*
+      // 吞吐量太低
       // UDP server
       PacketSinkHelper sink ("ns3::UdpSocketFactory",
                              InetSocketAddress (Ipv4Address::GetAny (), port));
@@ -641,8 +669,8 @@ main (int argc, char *argv[])
           OnOffHelper ap1OnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
                                   InetSocketAddress (h1h2Interface.GetAddress(1), port));
           ap1OnOffHelper.SetConstantRate (DataRate ("50kb/s"));
-          // ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-          // ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap1OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          ap1OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
           ap1OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
           ap1OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
           
@@ -655,8 +683,8 @@ main (int argc, char *argv[])
           OnOffHelper ap2OnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
                                   InetSocketAddress (h1h2Interface.GetAddress(1), port));
           ap2OnOffHelper.SetConstantRate (DataRate ("50kb/s"));
-          // ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-          // ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          ap2OnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          ap2OnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
           ap2OnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
           ap2OnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
           
@@ -667,8 +695,8 @@ main (int argc, char *argv[])
       OnOffHelper staOnOffHelper = OnOffHelper ("ns3::UdpSocketFactory",
                                   InetSocketAddress (h1h2Interface.GetAddress(1), port));
       staOnOffHelper.SetConstantRate (DataRate ("50kb/s"));
-      // staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-      // staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+      staOnOffHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+      staOnOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
       staOnOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (startTime)));
       staOnOffHelper.SetAttribute ("StopTime", TimeValue (Seconds(stopTime)));
     
@@ -945,7 +973,7 @@ CommandSetup (int argc, char **argv)
   cmd.AddValue ("ApplicationType", "Choose application to run, tcp-onoff(1), tcp-bulk(2), or udp(3)", nApplicationType);
   
   /* for udp-server-client application */
-  cmd.AddValue ("MaxPackets", "The total packets available to be scheduled by the UDP application.", nMaxPackets);
+  cmd.AddValue ("UdpMaxPackets", "The total packets available to be scheduled by the UDP application.", nUdpMaxPackets);
   cmd.AddValue ("Interval", "The interval between two packet sent", nUdpInterval);
   cmd.AddValue ("PacketSize", "The size in byte of each packet", nUdpPacketSize);
 
