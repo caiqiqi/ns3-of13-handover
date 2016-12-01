@@ -156,8 +156,8 @@ void JitterMonitor (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor,
   Gnuplot2dDataset dataset3);
 void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor);
 
-void ReadArp  (Ptr<Ipv4ClickRouting> clickRouter);
-void WriteArp (Ptr<Ipv4ClickRouting> clickRouter);
+// void ReadArp  (Ptr<Ipv4ClickRouting> clickRouter);
+// void WriteArp (Ptr<Ipv4ClickRouting> clickRouter);
 
 //  trace传输的包
 /*static void PhyTxTrace (std::string path, Ptr<const Packet> packet, 
@@ -255,13 +255,14 @@ main (int argc, char *argv[])
   /* The SetRemoteStationManager method tells the helper the type of `rate control algorithm` to use. 
    * Here, it is asking the helper to use the AARF algorithm
    */
-  // wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
-  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                "DataMode", StringValue ("OfdmRate18Mbps"));
+  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+  // wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                // "DataMode", StringValue ("OfdmRate18Mbps"));
   wifi.SetStandard (WIFI_PHY_STANDARD_80211g);  
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);   // 貌似只能在ns-3.25支持
   //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
-  //QosWifiMacHelper wifiMac;
+  // wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
+
   // 一个给AP，一个给STA
   // NqosWifiMacHelper wifiMacAP = NqosWifiMacHelper::Default ();
   // NqosWifiMacHelper wifiMacSTA = NqosWifiMacHelper::Default ();
@@ -862,6 +863,10 @@ main (int argc, char *argv[])
 
       // Enable datapath logs(这个打印在屏幕上的内容太多了，滚都滚不过来)
       //of13Helper->EnableDatapathLogs ("all");
+
+
+      // Turn on all Wifi logging
+      // wifi.EnableLogComponents ();
     }
 
 
@@ -1309,6 +1314,7 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor)
 
 }
 
+/*
 void
 ReadArp (Ptr<Ipv4ClickRouting> clickRouter)
 {
@@ -1323,3 +1329,4 @@ WriteArp (Ptr<Ipv4ClickRouting> clickRouter)
   // Access the handler
   NS_LOG_INFO (clickRouter->WriteHandler ("wifi/arpquerier", "insert", "172.16.1.2 00:00:00:00:00:02"));
 }
+*/
