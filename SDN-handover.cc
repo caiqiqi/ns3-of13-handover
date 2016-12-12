@@ -29,7 +29,7 @@
 #include "ns3/ofswitch13-module.h"
 #include "ns3/log.h"
 // 用来构造 BridgeNetDevice 的
-#include "ns3/bridge-module.h"
+// #include "ns3/bridge-module.h"
 
 // 定制的Controller
 //#include "qos-controller.h"
@@ -40,8 +40,11 @@
 #include "ns3/netanim-module.h"
 
 #include "ns3/ipv4-click-routing.h"
-//#include "ns3/click-internet-stack-helper.h"
-#include "my-learning-controller.h"
+// #include "ns3/click-internet-stack-helper.h"
+// #include "my-learning-controller.h"
+
+#include "ns3/topology-rsu-ap.h"
+#include "ns3/ofswitch13-topology-controller.h"
 
 #include <iostream>
 #include <fstream>
@@ -70,9 +73,8 @@ double serverStartTime = 1.0;
 double startTime = 1.001;
 double stopTime = 40.0;  // when the simulation stops
 
-uint32_t nApSwitch   = 3;   // 集成了AP功能的openflow switch
-uint32_t nSwitch     = 1;   // 纯粹的switch
-uint32_t nOf13Switch = nApSwitch + nApSwitch;  // 支持OpenFlow的节点数
+uint32_t nSwitch     = 4;  // 所有的swtich
+uint32_t nAp         = 3;  // 与switch相连的AP
 
 uint32_t nHost       = 2;
 uint32_t nAp1Station = 3;
@@ -102,12 +104,22 @@ uint32_t MaxRange = 100;
 和
 移动速度 ( x, y, z)
 */
-Vector3D mPosition = Vector3D(160.0, 120.0, 0.0);
-Vector3D mVelocity = Vector3D(0.0, -3.0 , 0.0);  //将速度改小并没有用，该不能握手还是不能握手
+Vector3D mPosition = Vector3D (160.0, 120.0, 0.0);
+Vector3D mVelocity = Vector3D (0.0, -3.0 , 0.0);  //将速度改小并没有用，该不能握手还是不能握手
+
+
+/*
+各个AP 的位置
+*/
+Vector3D apPosition[nAp];
+apPosition[0] = Vector3D (100, 200, 0);
+apPosition[1] = Vector3D (200, 20, 0);
+apPosition[2] = Vector3D (180, 100, 0);
+
 
 
 // 设置各个AP的传输信号强度(dBm为单位)，必须得为正值，否则不能发送。而且越大表示信号越强。
-double apTxPwr[nApSwitch] = { 90, 100, 90 };
+double apTxPwr[nAp] = { 90, 100, 90 };
 
 
 
@@ -150,6 +162,12 @@ void DeAssoc (std::string context, Mac48Address maddr);  // DeAssociate时回调
 // Auxiliary functions
 void EnableWifiLogComponents (enum LogLevel level);
 
+// 获取Node的IP信息
+void PrintIP (Ptr<Node> n);
+
+// 写入Node的IP信息
+void WriteIP (NodeContainer nodes, const char* fileName);
+
 // Print the starting position of nodes to the standard output
 void PrintLocations (NodeContainer nodes, std::string header);
 
@@ -173,16 +191,6 @@ void PrintParams (FlowMonitorHelper* fmhelper, Ptr<FlowMonitor> monitor);
 // void ReadArp  (Ptr<Ipv4ClickRouting> clickRouter);
 // void WriteArp (Ptr<Ipv4ClickRouting> clickRouter);
 
-//  trace传输的包
-/*static void PhyTxTrace (std::string path, Ptr<const Packet> packet, 
-  uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, 
-  bool isShortPreamble, uint8_t txPower);
-*/
-// trace接收的包
-/*static void PhyRxTrace (std::string path, Ptr<const Packet> packet, 
-  uint16_t channelFreqMhz, uint16_t channelNumber, uint32_t rate, 
-  bool isShortPreamble, double signalDbm, double noiseDbm);
-*/
 ////////////////////// 函数声明 ///////////////////
 
 
@@ -238,7 +246,7 @@ main (int argc, char *argv[])
   LogComponentEnable ("SDNHandoverScript", LOG_LEVEL_INFO);
 
   /*----- init Helpers ----- */
-  CsmaHelper  csma;
+  CsmaHelper  csmaHelper;
   
   /* 调用YansWifiChannelHelper::Default() 已经添加了默认的传播损耗模型, 下面不要再手动添加 
   By default, we create a channel model with a propagation delay equal to a constant, 
@@ -283,116 +291,30 @@ main (int argc, char *argv[])
   QosWifiMacHelper wifiMacAP = QosWifiMacHelper::Default ();
   QosWifiMacHelper wifiMacSTA = QosWifiMacHelper::Default ();
 
-  NS_LOG_UNCOND ("------------Creating Nodes------------");
-  NodeContainer of13SwitchesNodes; // 交换机Node(两个)
-  NodeContainer apSwitchNodes, hostNodes;
-  NodeContainer staWifiNodes[nApSwitch]; // 数组，包含nAp个NodeContainer,而每个NodeContainer里面包含各自WIFI网络中的节点
-  for (uint32_t i = 0; i < nApSwitch; i++)
+  NS_LOG_UNCOND ("-----------------Creating Nodes-----------------");
+  
+  /* 首先是控制器 */
+  Ptr<Node> of13ControllerNode = CreateObject<Node> ();   // Node #0
+  NodeContainer switchNodes;                              // Node #1~4
+  NodeContainer apNodes;                                  // Node #5~7
+  NodeContainer hostNodes;                                // Node #8~9
+  NodeContainer staWifiNodes[nAp];                        // Node #10~12, 13~32, 33
+  // 数组，包含nAp个NodeContainer,而每个NodeContainer里面包含各自WIFI网络中的节点
+  for (uint32_t i = 0; i < nAp; i++)
   {
     staWifiNodes[i] = NodeContainer();
   }
 
-  // Controller节点
-  Ptr<Node> of13ControllerNode = CreateObject<Node> ();   // Node 0
-  of13SwitchesNodes.   Create (nSwitch);                   // Node 1
-  apSwitchNodes.       Create (nApSwitch);                 //3 Nodes(Ap1 Ap2 and Ap3)-----node 2,3,4
-  hostNodes.          Create (nHost);                     //2 Nodes(host1 and host2)-----node 5,6
+  switchNodes.         Create (nSwitch);
+  apNodes.             Create (nAp);
+  hostNodes.           Create (nHost);
 
   staWifiNodes[0].Create(nAp1Station);    // node 7,8,9
   staWifiNodes[1].Create(nAp2Station);    // node 10~29
   staWifiNodes[2].Create(nAp3Station);    //  node 30
   
-  Ptr<Node> ap1WifiNode = apSwitchNodes.Get (0);
-  Ptr<Node> ap2WifiNode = apSwitchNodes.Get (1);
-  Ptr<Node> ap3WifiNode = apSwitchNodes.Get (2);
-  
-  
-
-  NS_LOG_UNCOND ("------------Creating Devices------------");
-  /* CSMA Devices */
-  NetDeviceContainer apCsmaDevices[nApSwitch];
-  for (uint32_t i = 0; i < nApSwitch; i++)
-  {
-    apCsmaDevices[i] = NetDeviceContainer();
-  }
-
-  NetDeviceContainer hostDevices;
-  
-  NetDeviceContainer of13SwitchPorts[nSwitch];  //两个switch的网卡们(ports)
-  for (uint32_t i = 0; i < nSwitch; i++)
-  {
-    of13SwitchPorts[i] = NetDeviceContainer();
-  }
-
-  
-  /* WIFI Devices */
-  NetDeviceContainer stasWifiDevices[nApSwitch]; // 各个WIFI网络的STA的数组，每个NetDeviceContainer里包含各自WIFI网络的网卡
-  for (uint32_t i = 0; i < nApSwitch; i++)
-  {
-    stasWifiDevices[i] = NetDeviceContainer();
-  }
-  NetDeviceContainer apWifiDevices[nApSwitch]; // 各个WIFI网络的AP数组，每个NetDeviceContainer里包含各种WIFI网络的网卡
-  for (uint32_t i = 0 ; i <nApSwitch; i++)
-  {
-    apWifiDevices[i] = NetDeviceContainer();
-  }
-
-  
-  NS_LOG_UNCOND ("------------Building Topology-------------");
-
-  NetDeviceContainer link;
-
-  /* #1 Connect  switch1 to  switch2 */
-  // switch1 和 switch2 之间的线路作为主干线路, 应该是100M的
-  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
-  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
-  link = csma.Install (NodeContainer(of13SwitchesNodes.Get(0),of13SwitchesNodes.Get(1)));  
-  of13SwitchPorts[0]. Add(link.Get(0));
-  of13SwitchPorts[1]. Add(link.Get(1));
-
-  
-  /* #2 Connect AP1, AP2 and AP3 to switch1 ！！！*/ 
-  // 各个AP到switch1的线路做一下限制, 每个AP到switch1只能有30M
-  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("30Mbps")));
-  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
-  for (uint32_t i = 0; i < nApSwitch; i++)
-  {
-    link = csma.Install (NodeContainer(apSwitchNodes.Get(i), of13SwitchesNodes.Get(0)));   // Get(0) for switch1
-    if (i == 0)
-    {
-      apCsmaDevices[0]. Add(link.Get(0));
-    }
-    else if (i == 1)
-    {
-      apCsmaDevices[1]. Add(link.Get(0));
-    }
-    else if (i == 2)
-    {
-      apCsmaDevices[2]. Add(link.Get(0));
-    }
-    //switch1Device. Add(link.Get(1));
-    of13SwitchPorts[0]. Add(link.Get(1));
-  }
-
-
-  /* #3 Connect host1 and host2 to  switch2  */
-  // 别忘了这里也要设置csma的link参数，否则会沿用上一个30Mbps的值
-  csma.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
-  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
-  for (uint32_t i = 0; i < nHost; i++)
-  {
-    link = csma.Install (NodeContainer(hostNodes.Get(i), of13SwitchesNodes.Get(1)));   // Get(1) for switch2
-    hostDevices. Add(link.Get(0));
-    of13SwitchPorts[1]. Add(link.Get(1)); // switch2
-  }
-
-  NS_LOG_UNCOND ("----------Configuring WIFI networks----------");
+  NS_LOG_UNCOND ("---------------Configuring WIFI networks---------------");
   Ssid ssid = Ssid ("ssid-default");
-  // Ssid ssid1 = Ssid ("ssid-1");
-  // Ssid ssid2 = Ssid ("ssid-2");
-  // Ssid ssid3 = Ssid ("ssid-3");
-
-  //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (0 % 3) * 5));   // 1
 
   // ------------------- 配置STA --------------------
   wifiMacSTA.SetType ("ns3::StaWifiMac", 
@@ -419,10 +341,9 @@ main (int argc, char *argv[])
                    );
   wifiPhyAP.Set("TxPowerStart", DoubleValue(apTxPwr[0]));
   wifiPhyAP.Set("TxPowerEnd",   DoubleValue(apTxPwr[0]));
-  apWifiDevices[0]   = wifi.Install(wifiPhyAP, wifiMacAP, ap1WifiNode);
+  apWifiDevices.Get(0)   = wifi.Install(wifiPhyAP, wifiMacAP, ap1WifiNode);
 
 
-  //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (1 % 3) * 5));    // 6  
   wifiMacAP.SetType ("ns3::ApWifiMac",
                    // ,"BeaconGeneration", BooleanValue (true)  // 应该默认是true吧
                    //,"BeaconInterval", TimeValue (NanoSeconds (102400000)) // 即124ms
@@ -431,17 +352,16 @@ main (int argc, char *argv[])
   wifiPhyAP.Set("TxPowerStart", DoubleValue(apTxPwr[1]));
   wifiPhyAP.Set("TxPowerEnd",   DoubleValue(apTxPwr[1]));
 
-  apWifiDevices[1]   = wifi.Install(wifiPhyAP, wifiMacAP, ap2WifiNode);
+  apWifiDevices.Get(1)   = wifi.Install(wifiPhyAP, wifiMacAP, ap2WifiNode);
 
 
-  //wifiPhy.Set("ChannelNumber", UintegerValue(1 + (2 % 3) * 5));    // 11
   wifiMacAP.SetType ("ns3::ApWifiMac",
                   // ,"BeaconGeneration", BooleanValue (true)  // 应该默认是true吧
                   //,"BeaconInterval", TimeValue (NanoSeconds (102400000)) // 即124ms
                    "Ssid", SsidValue (ssid));
   wifiPhyAP.Set("TxPowerStart", DoubleValue(apTxPwr[2]));
   wifiPhyAP.Set("TxPowerEnd",   DoubleValue(apTxPwr[2]));
-  apWifiDevices[2]   = wifi.Install(wifiPhyAP, wifiMacAP, ap3WifiNode);
+  apWifiDevices.Get(2)   = wifi.Install(wifiPhyAP, wifiMacAP, ap3WifiNode);
   // ------------------- 配置AP --------------------
 
   MobilityHelper mobility1;
@@ -482,30 +402,98 @@ main (int argc, char *argv[])
   velocityModel->SetVelocity(mVelocity);
 
 
-  /* for ConstantPosition Nodes */
+  // 配置固定位置的Nodes
   MobilityHelper mobConstantPosition;
   /* We want the AP to remain in a fixed position during the simulation 
    * only stations in AP1 and AP2 is mobile, the only station in AP3 is not mobile.
    */
   mobConstantPosition.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobConstantPosition.Install (apSwitchNodes);
+  mobConstantPosition.Install (apNodes);
+  // mobConstantPosition.Install (switchNodes);
   mobConstantPosition.Install (hostNodes);
   //mobConstantPosition.Install (staWifiNodes[2]);
-  mobConstantPosition.Install (of13SwitchesNodes);
   mobConstantPosition.Install (of13ControllerNode);
 
-  
-  NS_LOG_UNCOND ("----------Installing Bridge NetDevice----------");
 
+
+  NS_LOG_UNCOND ("-----------------Creating Devices---------------");
+  /* Switch 的 CSMA Devices */
+  NetDeviceContainer of13SwitchPorts[nSwitch];  //各个switch的网卡们(ports)
+  for (uint32_t i = 0; i < nSwitch; i++)
+  {
+    of13SwitchPorts[i] = NetDeviceContainer();
+  }
+
+  /* AP 的 CSMA Devices */
+  NetDeviceContainer apCsmaDevices;
+  /* Hosts 的 Devices */
+  NetDeviceContainer hostDevices;
+  /* AP 的WIFI Devices*/
+  NetDeviceContainer apWifiDevices;
+  /* STA 的WIFI Devices*/
+  NetDeviceContainer stasWifiDevices[nAp];
+  for (uint32_t i = 0; i < nAp; i++)
+  {
+    stasWifiDevices[i] = NetDeviceContainer();
+  }
+
+  
+  NS_LOG_UNCOND ("-----------------Building Topology-----------------");
+
+  /* #1 将各个Switch连接串在一起 */
+  // 各个 switch 之间的线路作为主干线路, 应该是100M的
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
+  for (uint32_t i = 1; i < nAP; i++)
+  {
+    NodeContainer nc (switchNodes.Get(i - 1), switchNodes.Get(i));
+    NetDeviceContainer link = csmaHelper.Install(nc);
+    of13SwitchPorts[i - 1]. Add(link.Get(0));
+    of13SwitchPorts[i].     Add(link.Get(1));
+  }
+
+  
+  /* #2 将各个AP连接到对应的switch上 */
+  // 使 delay = 0 来模拟 Ap 和 OfSwitch13 在同一个设备里, 1000M保证带宽充足
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("1000Mbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (0)));
+  // Link each switch with its AP
+  for (uint32_t i = 0; i < nAp; i++)
+  {
+      NodeContainer nc (switchNodes.Get (i), apNodes.Get (i));
+      NetDeviceContainer link = csmaHelper.Install (nc);
+      of13SwitchPorts[i].Add (link.Get (0));
+      apCsmaDevices.Add (link.Get (1));
+  }
+
+
+  /* #3 将两个Host与最末尾的switch相连  */
+  // 别忘了这里也要设置csma的link参数，否则会沿用上一个30Mbps的值
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
+  for (uint32_t i = 0; i < nHost; i++)
+  {
+    NodeContainer nc (hostNodes.Get(i), switchNodes.Get(1));
+    link = csmaHelper.Install (nc);
+    hostDevices. Add(link.Get(0));
+    of13SwitchPorts[1]. Add(link.Get(1));
+  }
+
+
+  /*
+  NS_LOG_UNCOND ("----------Installing Bridge NetDevice----------");
+  
   Ptr<Node> of13Switch1Node = of13SwitchesNodes.Get (0);
   Ptr<Node> of13Switch2Node = of13SwitchesNodes.Get (1);
-  /*!!!!!!!!!!!! 关键的 BridgeHelper !!!!!!!!!!!*/
+  //!!!!!!!!!!!! 关键的 BridgeHelper !!!!!!!!!!!
 
   // 每个AP中，CSMA网卡与WIFI网卡构成一个`BridgeNetDevice`
   BridgeHelper bridgeForAP1, bridgeForAP2, bridgeForAP3;
-  bridgeForAP1. Install(apSwitchNodes.Get (0), NetDeviceContainer(apWifiDevices[0], apCsmaDevices[0]));
-  bridgeForAP2. Install(apSwitchNodes.Get (1), NetDeviceContainer(apWifiDevices[1], apCsmaDevices[1]));
-  bridgeForAP3. Install(apSwitchNodes.Get (2), NetDeviceContainer(apWifiDevices[2], apCsmaDevices[2]));
+  bridgeForAP1. Install(apSwitchNodes.Get (0), NetDeviceContainer(apWifiDevices.Get(0), apCsmaDevices.Get(0)));
+  bridgeForAP2. Install(apSwitchNodes.Get (1), NetDeviceContainer(apWifiDevices.Get(1), apCsmaDevices.Get(1)));
+  bridgeForAP3. Install(apSwitchNodes.Get (2), NetDeviceContainer(apWifiDevices.Get(2), apCsmaDevices.Get(2)));
+  */
+  
 
   NS_LOG_UNCOND ("------Configuring OpenFlow1.3 Switch && Controller------");
   
@@ -523,18 +511,30 @@ main (int argc, char *argv[])
   learningCtrl = DynamicCast<OFSwitch13LearningController> (of13ControllerApp); //转型
   */
 
-  
-
-  Ptr<MyLearningController>  of13ControllerApp = CreateObject<MyLearningController> (); // 自己的controller
+  // Ptr<MyLearningController>  of13ControllerApp = CreateObject<MyLearningController> (); // 自己的controller
   // InstallControllerApp() 是安装的普通的controller
   /*
   将`ns3::OFSwitch13Controller`应用(参数2)安装到node中(参数1)
   同时也在那个node上安装了TCP/IP协议栈
   最后对所有之前已注册的switch 开始  switch <–> controller 的连接
   */
-  of13Helper->InstallControllerApp (of13ControllerNode, of13ControllerApp);
+  // of13Helper->InstallControllerApp (of13ControllerNode, of13ControllerApp);
   
+  Ptr<OFSwitch13TopologyController> topologyCtrl =
+                                 CreateObject<OFSwitch13TopologyController> ();
+  Time updateStartTime = Seconds (0);
+  TIme updateInterval = Seconds (3);
 
+  topologyCtrl->SetUpdateStartTime (updateStartTime);
+  topologyCtrl->SetUpdateInterval (updateInterval);
+  // Install the controller application and set 0 as start time
+  of13Helper->InstallControllerApp (of13ControllerNode, topologyCtrl);
+  // Set the desidered time to call controller's StopApplication ().
+  // We can accept the controller starting at 0 so it can proceed with
+  // RSUs configuration before the simulation starts. We just set
+  // update requests start time to startTime + updateInterval, 
+  // avoid to obtain empty replies during the first request. 
+  topologyCtrl->SetStopTime ( Seconds (stopTime));
 
   OFSwitch13DeviceContainer of13SwitchDevices[nSwitch];
   // 第i个of13SwitchDevices是通过在第i个of13SwitchesNodes上安装第i个of13SwitchPorts得到的
@@ -566,7 +566,7 @@ main (int argc, char *argv[])
 
   InternetStackHelper internet;
 
-  //internet.Install (apSwitchNodes);
+  internet.Install (apNodes);
   internet.Install (hostNodes);
   //internet.Install (of13SwitchesNodes); 
   // (v3.25)给交换机装上Internet之后，交换机就有了回环网卡
@@ -578,34 +578,57 @@ main (int argc, char *argv[])
   
   
   NS_LOG_UNCOND ("-----------Assigning IP Addresses.-----------");
+  /*  有线网 CSMA  */
+  Ipv4AddressHelper ipv4Csma;
+  ipv4Csma.SetBase ("10.0.0.0",    "255.255.255.0");
 
+  Ipv4InterfaceContainer iApCsma;
+  Ipv4InterfaceContainer iHost;
+  iApCsma = ipv4Csma.Assign(apCsmaDevices);    // 10.0.0.1~3
+  iHost   = ipv4Csma.Assign(hostDevices);      // 10.0.0.4~5
 
-
-  Ipv4AddressHelper ip;
-  ip.SetBase ("10.0.0.0",    "255.255.255.0");
-
-  Ipv4InterfaceContainer h1h2Interface;
-  Ipv4InterfaceContainer stasWifi1Interface;
-  Ipv4InterfaceContainer stasWifi2Interface;
-  Ipv4InterfaceContainer stasWifi3Interface;
-
-
-
-
-  h1h2Interface      = ip.Assign (hostDevices);   // 10.0.0.1~2
-
-  // 共三组STA
-  stasWifi1Interface = ip.Assign (stasWifiDevices[0]); // 10.0.0.0.3~5
-  stasWifi2Interface = ip.Assign (stasWifiDevices[1]); // 10.0.0.0.6~9
-  stasWifi3Interface = ip.Assign (stasWifiDevices[2]); // 10.0.0.0.10
+  /*  无线网 WIFI */
+  Ipv4AddressHelper ipv4Wifi;
+  ipv4Wifi.SetBase ("20.0.0.0",     "255.255.255.0");
+  Ipv4InterfaceContainer iApsWifi;
+  Ipv4InterfaceContainer iStasWifi[nAp];
+  for (uint32_t i = 0; i < nAP; i++)
+  {
+    iApsWifi     = ipv4Wifi.Assign(apWifiDevices);    // 20.0.0.1~3
+    iStasWifi[i] = ipv4Wifi.Assign(stasWifiDevices[i]);  // 20.0.0.4~6
+                                                      // 20.0.0.7~26
+                                                      // 20.0.0.27
+  }
 
   // 设置全局变量server IP 和client IP的值，供下面的测延时、吞吐量、抖动、丢包等使用
-  serverIp = h1h2Interface.GetAddress(1);
-  clientIp = stasWifi3Interface.GetAddress(0);
+  serverIp = iHost.GetAddress(1);
+  clientIp = iStasWifi[2].GetAddress(0);
+
+  // Insert (ap + switch) bridge behavior + socket
+  NS_LOG_INFO ("Configure AP (bridge behavior + socket)");
+  // 将每一个AP的
+  for (uint32_t i = 0; i < nAp; i++)
+  {
+    Ptr<TopologyRSUAp> ap;
+    Ptr<NetDevice> csmaDev = apCsmaDevices.Get (i);
+    Ptr<NetDevice> wifiDev = apWifiDevices.Get (i);
+    // TODO remove, check inside ap's constructor
+    // if (!csmaDev || !wifiDev)
+    // {
+    //     NS_FATAL_ERROR ("Error in downcasting NetDevice for the apRSU.");
+    // }
+    ap = CreateObject<TopologyRSUAp> (csmaDev, wifiDev);
+    (apNodes.Get (i))->AggregateObject (ap);
+    // Configure ap's socket on wireless interface
+    ap-> ConfigureSockets ();
+
+    ap-> SetPosition(apPosition[i]);
+  }
+
+
 
   NS_LOG_UNCOND ("-----------Creating Applications.-----------");
   uint16_t port = 8080;
-  
   
 /*  判断应用类型，TCP bulk 还是 TCP onoff , 还是UDP  */
   if (nApplicationType == 0)
@@ -827,24 +850,24 @@ main (int argc, char *argv[])
   if (tracing)
     {
       //AsciiTraceHelper ascii;
-      //csma.EnableAsciiAll (ascii.CreateFileStream ("SDN-handover/SDN-handover.tr"));
+      //csmaHelper.EnableAsciiAll (ascii.CreateFileStream ("SDN-handover/SDN-handover.tr"));
 
       // Enable pcap traces
-      wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-ap1-wifi", apWifiDevices[0]);
-      wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-ap2-wifi", apWifiDevices[1]);
+      wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-ap1-wifi", apWifiDevices.Get(0));
+      wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-ap2-wifi", apWifiDevices.Get(1));
       //wifiPhy.EnablePcap ("SDN-handover/SDN-handover-ap2-sta1-wifi", stasWifiDevices[1]);
-      wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-ap3-wifi", apWifiDevices[2]);
+      wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-ap3-wifi", apWifiDevices.Get(2));
       wifiPhyAP.EnablePcap ("SDN-handover/SDN-handover-sta-wifi", stasWifiDevices[2].Get(0));//只有一个
       // WifiMacHelper doesnot have `EnablePcap()` method
-      //csma.EnablePcap ("SDN-handover/SDN-handover-switch1-csma", switch1Device);
-      //csma.EnablePcap ("SDN-handover/SDN-handover-switch2-csma", switch2Device);
-      csma.EnablePcap ("SDN-handover/SDN-handover-switch1-csma", of13SwitchPorts[0]);
-      csma.EnablePcap ("SDN-handover/SDN-handover-switch2-csma", of13SwitchPorts[1]);
-      //csma.EnablePcap ("SDN-handover/SDN-handover-ap1-csma", apCsmaDevices[0]);
-      //csma.EnablePcap ("SDN-handover/SDN-handover-ap2-csma", apCsmaDevices[1]);
-      csma.EnablePcap ("SDN-handover/SDN-handover-ap3-csma", apCsmaDevices[2]);
-      //csma.EnablePcap ("SDN-handover/SDN-handover-H1-csma", hostDevices.Get(0));
-      csma.EnablePcap ("SDN-handover/SDN-handover-H2-csma", hostDevices.Get(1));
+      //csmaHelper.EnablePcap ("SDN-handover/SDN-handover-switch1-csma", switch1Device);
+      //csmaHelper.EnablePcap ("SDN-handover/SDN-handover-switch2-csma", switch2Device);
+      csmaHelper.EnablePcap ("SDN-handover/SDN-handover-switch1-csma", of13SwitchPorts[0]);
+      csmaHelper.EnablePcap ("SDN-handover/SDN-handover-switch2-csma", of13SwitchPorts[1]);
+      //csmaHelper.EnablePcap ("SDN-handover/SDN-handover-ap1-csma", apCsmaDevices.Get(0));
+      //csmaHelper.EnablePcap ("SDN-handover/SDN-handover-ap2-csma", apCsmaDevices.Get(1));
+      csmaHelper.EnablePcap ("SDN-handover/SDN-handover-ap3-csma", apCsmaDevices.Get(2));
+      //csmaHelper.EnablePcap ("SDN-handover/SDN-handover-H1-csma", hostDevices.Get(0));
+      csmaHelper.EnablePcap ("SDN-handover/SDN-handover-H2-csma", hostDevices.Get(1));
 
       /* 在controller和switch的 OpenFlow信道中开启pcap追踪  */
       of13Helper->EnableOpenFlowPcap ("SDN-handover/SDN-handover-ofCtrl");
@@ -862,9 +885,9 @@ main (int argc, char *argv[])
   AnimationInterface anim ("SDN-handover/SDN-handover.xml");
   anim.SetConstantPosition(of13SwitchesNodes.Get (0),200,0);             // s1-----node 0
   anim.SetConstantPosition(of13SwitchesNodes.Get (1),400,0);             // s2-----node 1
-  anim.SetConstantPosition(apSwitchNodes.Get(0),100,20);      // Ap1----node 2
-  anim.SetConstantPosition(apSwitchNodes.Get(1),200,20);      // Ap2----node 3
-  anim.SetConstantPosition(apSwitchNodes.Get(2),180,100);      // Ap3----node 4
+  // anim.SetConstantPosition(apNodes.Get(0),100,20);      // Ap1----node 2
+  // anim.SetConstantPosition(apNodes.Get(1),200,20);      // Ap2----node 3
+  // anim.SetConstantPosition(apNodes.Get(2),180,100);      // Ap3----node 4
   anim.SetConstantPosition(hostNodes.Get(0),350,60);    // H1-----node 5
   anim.SetConstantPosition(hostNodes.Get(1),400,60);    // H2-----node 6
   //anim.SetConstantPosition(staWifiNodes[2].Get(0),55,40);  //   -----node 14
@@ -1360,6 +1383,51 @@ void EnableWifiLogComponents (enum LogLevel level)
   LogComponentEnable ("YansWifiChannel", level);
   LogComponentEnable ("YansWifiPhy", level);    
 }
+
+// 获取Node的IP信息
+void PrintIP (Ptr<Node> n)
+{
+    Ptr<Ipv4> ipv4 = n->GetObject<Ipv4> ();
+    uint32_t nInt = ipv4->GetNInterfaces ();
+    std::cout << "Node: " << ipv4->GetObject<Node> ()->GetId ()
+              << " Time: " << Simulator::Now ().GetSeconds () << "s "
+              << "IPv4 addresses" << std::endl;
+    std::cout << "(Interface index, Address index)\t" << "IPv4 Address" << std::endl;
+
+    for (uint32_t i = 0; i < nInt; i++)
+    {
+        for (uint32_t j = 0; j < ipv4->GetNAddresses(i); j++)
+        {
+            std::cout << "(" << int(i) << "," << int(j) << ")\t" << ipv4->GetAddress(i,j) << std::endl;
+        }
+    }
+}
+
+// 写入Node的IP信息
+void WriteIP (NodeContainer nodes, const char* fileName)
+{
+    std::ofstream file;
+    file.open (fileName);
+    for (NodeContainer::Iterator iNode = nodes.Begin (); iNode != nodes.End (); ++iNode)
+    {
+        Ptr<Node> node = *iNode;
+        Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> ();
+        uint32_t nInt = ipv4->GetNInterfaces ();
+        file << "Node: " << ipv4->GetObject<Node> ()->GetId ()
+             << " Time: " << Simulator::Now ().GetSeconds () << "s "
+             << "IPv4 addresses" << std::endl;
+        file << "(Interface index, Address index)\t" << "IPv4 Address" << std::endl;
+        for (uint32_t i = 0; i < nInt; i++)
+        {
+            for (uint32_t j = 0; j < ipv4->GetNAddresses(i); j++)
+            {
+                file << "(" << int(i) << "," << int(j) << ")\t" << ipv4->GetAddress(i,j) << std::endl;
+            }
+        }
+        file << std::endl;
+    }
+}
+
 
 // Print the starting position of nodes to the standard output
 void PrintLocations (NodeContainer nodes, std::string header)
