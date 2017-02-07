@@ -94,6 +94,7 @@ QosController::HandlePacketIn (ofl_msg_packet_in *msg, SwitchInfo swtch, uint32_
   return 0;
 }
 
+/* 在switch与Controller握手之后被调用  */
 void
 QosController::ConnectionStarted (SwitchInfo swtch)
 {

@@ -13,6 +13,20 @@
 //            |      |
 //            m2     m1  
 //
+// Original topology
+ *   Servers                 OpenFlow controllers                Clients
+ *  +-------+             +-------+       +-------+             +-------+
+ *  | Srv 0 |=======+   +=| Ctr 0 |=+     | Ctr 1 |=+   +=======| Cli 0 |
+ *  +-------+       |   | +-------+ |     +-------+ |   |       +-------+
+ *                  |   |           |               |   |
+ *                +-------+       +-------+       +-------+     +-------+
+ *                | Swt 0 |#######| Swt 1 |=======| Swt 2 |=====| Cli 1 |
+ *                +-------+       +-------+       +-------+     +-------+
+ *                  |         OpenFlow switches         |          ...
+ *  +-------+       |                                   |       +-------+
+ *  | Srv 1 |=======+                                   +=======| Cli N |
+ *  +-------+                                                   +-------+
+
  *
  **/
 
@@ -160,6 +174,7 @@ main (int argc, char *argv[])
   ApplicationContainer senderApps = senderHelper.Install (clientNodes);
 
   // Get random start times
+  // 设置随机开始时间
   Ptr<UniformRandomVariable> randomStart = CreateObject<UniformRandomVariable> ();
   randomStart->SetAttribute ("Min", DoubleValue (0));
   randomStart->SetAttribute ("Max", DoubleValue (1));

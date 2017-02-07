@@ -31,8 +31,6 @@
 // 用来构造 BridgeNetDevice 的
 // #include "ns3/bridge-module.h"
 
-// 定制的Controller
-//#include "qos-controller.h"
 
 //包含 `gnuplot`和`Gnuplot2Ddatabase`
 #include "ns3/stats-module.h"
@@ -42,9 +40,6 @@
 #include "ns3/ipv4-click-routing.h"
 // #include "ns3/click-internet-stack-helper.h"
 // #include "my-learning-controller.h"
-
-#include "ns3/topology-rsu-ap.h"
-#include "ns3/ofswitch13-topology-controller.h"
 
 #include <iostream>
 #include <fstream>
@@ -56,8 +51,9 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("SDNHandoverScript");
 
-uint32_t nApplicationType = 0;
+uint32_t nApplicationType = APP_NONE;
 
+const uint32_t APP_NONE      = 0;
 const uint32_t APP_TCP_ONOFF = 1;
 const uint32_t APP_TCP_BULK  = 2;
 const uint32_t APP_UDP       = 3;
@@ -434,8 +430,8 @@ main (int argc, char *argv[])
    * only stations in AP1 and AP2 is mobile, the only station in AP3 is not mobile.
    */
   mobConstantPosition.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobConstantPosition.Install (switchNodes);
   mobConstantPosition.Install (apNodes);
-  // mobConstantPosition.Install (switchNodes);
   mobConstantPosition.Install (hostNodes);
   //mobConstantPosition.Install (staWifiNodes[2]);
   mobConstantPosition.Install (of13ControllerNode);
@@ -609,7 +605,7 @@ main (int argc, char *argv[])
   clientIp = iStasWifi[2].GetAddress(0);
 
   // Insert (ap + switch) bridge behavior + socket
-  NS_LOG_INFO ("Configure AP (bridge behavior + socket)");
+  NS_LOG_INFO ("------------Configure AP (bridge behavior + socket)------------");
   // 将每一个AP的
   for (uint32_t i = 0; i < nAp; i++)
   {
@@ -624,9 +620,7 @@ main (int argc, char *argv[])
     ap = CreateObject<TopologyRSUAp> (csmaDev, wifiDev);
     (apNodes.Get (i))->AggregateObject (ap);
     // Configure ap's socket on wireless interface
-    ap-> ConfigureSockets ();
-
-    ap-> SetPosition(apPosition[i]);
+    // ap-> ConfigureSockets ();
   }
 
 
@@ -635,7 +629,7 @@ main (int argc, char *argv[])
   uint16_t port = 8080;
   
 /*  判断应用类型，TCP bulk 还是 TCP onoff , 还是UDP  */
-  if (nApplicationType == 0)
+  if (nApplicationType == APP_NONE)
   {
     std::cout << "[!] Please choose application to run! '--ApplicationType='  tcp-onoff(1), tcp-bulk(2) or udp(3)" << std::endl;
     return 1;
@@ -884,14 +878,17 @@ main (int argc, char *argv[])
       // wifi.EnableLogComponents ();
     }
 
-
-
+  NS_LOG_UNCOND ("-----------Configuring Position.-----------");
+  // TODO: 设置未设置的Switch和AP的位置
   AnimationInterface anim ("SDN-handover/SDN-handover.xml");
-  anim.SetConstantPosition(switchNodes.Get (0),200,0);             // s1-----node 0
-  anim.SetConstantPosition(switchNodes.Get (1),400,0);             // s2-----node 1
-  // anim.SetConstantPosition(apNodes.Get(0),100,20);      // Ap1----node 2
-  // anim.SetConstantPosition(apNodes.Get(1),200,20);      // Ap2----node 3
-  // anim.SetConstantPosition(apNodes.Get(2),180,100);      // Ap3----node 4
+  anim.SetConstantPosition(switchNodes.Get (0),200,0);
+  anim.SetConstantPosition(switchNodes.Get (1),300,0);
+  anim.SetConstantPosition(switchNodes.Get (2),400,0);
+  anim.SetConstantPosition(switchNodes.Get (3),600,0);
+
+  anim.SetConstantPosition(apNodes.Get(0),100,20);
+  anim.SetConstantPosition(apNodes.Get(1),200,20);
+  anim.SetConstantPosition(apNodes.Get(2),180,100);
   anim.SetConstantPosition(hostNodes.Get(0),350,60);    // H1-----node 5
   anim.SetConstantPosition(hostNodes.Get(1),400,60);    // H2-----node 6
   //anim.SetConstantPosition(staWifiNodes[2].Get(0),55,40);  //   -----node 14
@@ -901,7 +898,7 @@ main (int argc, char *argv[])
 
 
   /* 对所有STA监控其 Association 和 DeAssocation 的过程  */
-  NS_LOG_UNCOND ("--------Tracing Association and DeAssociation.--------");
+  NS_LOG_UNCOND ("------------Tracing Association and DeAssociation.--------");
   std::ostringstream oss_assoc, oss_deassoc;
   // 只需要监控Node 30(即moving STA的Association和DeAssociation状态)
   oss_assoc <<

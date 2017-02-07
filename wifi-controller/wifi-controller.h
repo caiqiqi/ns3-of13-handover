@@ -33,17 +33,6 @@ protected:
   void ConnectionStarted (SwitchInfo swtch);
 
 private:
-  /**
-   * Configure the border switch.
-   * \param swtch The switch information.
-   */
-  void ConfigureBorderSwitch (SwitchInfo swtch);
-
-  /**
-   * Configure the aggregation switch.
-   * \param swtch The switch information.
-   */
-  void ConfigureAggregationSwitch (SwitchInfo swtch);
 
   /**
    * Handle ARP request messages.
@@ -56,6 +45,7 @@ private:
 
   /**
    * Handle TCP connection request
+   * --- 处理来自switch发起的连接请求
    * \param msg The packet-in message.
    * \param swtch The switch information.
    * \param xid Transaction id.
@@ -65,6 +55,7 @@ private:
 
   /**
    * Extract an IPv4 address from packet match.
+   * --- 从匹配到的数据包中得到其 IP
    * \param oxm_of The OXM_IF_* IPv4 field.
    * \param match The ofl_match structure pointer.
    * \return The IPv4 address.
