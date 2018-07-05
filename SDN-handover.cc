@@ -210,6 +210,7 @@ main (int argc, char *argv[])
   // ns-3.24   ///////
   //Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpTahoe"));
 
+  /* 将改属性值设置为true之后，就可以在simulation过程中当topology发生改变的时候，随着改变更新全局路由表 */
   Config::SetDefault ("ns3::Ipv4GlobalRouting::RespondToInterfaceEvents", BooleanValue (true));
   /* RTS/CTS 一种半双工的握手协议 
   设置好RTS的阈值之后，如果超过这个阈值就会在发送信息之前先发送RTS，以减少干扰，
